@@ -1,0 +1,280 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TaxTracker Database",
+  "description": "Schema for the Indian tax tracker application — tracks foreign income, property income, capital gains, other income, stock transactions, and advance tax payments across multiple accounts.",
+  "type": "object",
+  "required": ["accounts"],
+  "properties": {
+    "config": {
+      "type": "object",
+      "description": "Global configuration shared across all accounts.",
+      "properties": {
+        "ForeignStockTickers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of stock ticker symbols (e.g. AAPL, GOOG)."
+        },
+        "ForeignCurrencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of foreign currency codes (e.g. USD, EUR)."
+        },
+        "CurrencyRates": {
+          "type": "object",
+          "description": "Exchange rates to INR keyed by currency code (e.g. { \"USD\": 85 }).",
+          "additionalProperties": { "type": "number" }
+        },
+        "CurrencySymbols": {
+          "type": "object",
+          "description": "Display symbols keyed by currency code (e.g. { \"USD\": \"$\" }).",
+          "additionalProperties": { "type": "string" }
+        },
+        "ForeignIncomeSource": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tag list of income sources (e.g. Stocks, Consulting)."
+        },
+        "ForeignIncomeType": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tag list of income types (e.g. Dividends, Interest)."
+        },
+        "CapitalGainsTypes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Capital gains types (e.g. STCG, LTCG)."
+        },
+        "CapitalGainsQuarters": {
+          "type": "array",
+          "description": "Advance tax quarter definitions for capital gains (CgQ).",
+          "items": {
+            "type": "object",
+            "required": ["quarter", "from", "to"],
+            "properties": {
+              "quarter": { "type": "string" },
+              "from": { "type": "string", "description": "Start date in DD-MMM format." },
+              "to": { "type": "string", "description": "End date in DD-MMM format." }
+            }
+          }
+        },
+        "FYQuarters": {
+          "type": "array",
+          "description": "Financial year quarter definitions (QFY: Q1–Q4, Apr–Mar).",
+          "items": {
+            "type": "object",
+            "required": ["quarter", "from", "to"],
+            "properties": {
+              "quarter": { "type": "string" },
+              "from": { "type": "string", "description": "Start date in DD-MMM format." },
+              "to": { "type": "string", "description": "End date in DD-MMM format." }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "accounts": {
+      "type": "array",
+      "description": "List of account holders, each with their own set of data tables.",
+      "items": {
+        "type": "object",
+        "required": ["account", "name"],
+        "properties": {
+          "account": { "type": "string", "description": "Unique account code." },
+          "name": { "type": "string", "description": "Display name of the account holder." },
+          "enabled": { "type": "boolean", "default": true, "description": "Whether this account is active in the app." },
+
+          "ForeignAccounts": {
+            "type": "array",
+            "description": "Foreign brokerage/bank accounts held by this person.",
+            "items": {
+              "type": "object",
+              "required": ["ForeignAccount"],
+              "properties": {
+                "ForeignAccount": { "type": "string", "description": "Unique identifier for the foreign account." },
+                "Entity": { "type": "string", "description": "Institution name (e.g. Fidelity, Schwab)." },
+                "AccountNumber": { "type": "string" }
+              }
+            }
+          },
+
+          "Properties": {
+            "type": "array",
+            "description": "Properties owned, used as lookup for PropertyIncome.",
+            "items": {
+              "type": "object",
+              "required": ["PropertyID"],
+              "properties": {
+                "PropertyID": { "type": "string", "description": "Unique property identifier." },
+                "PropertyAddress": { "type": "string" },
+                "OwnershipSharePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+                "PropertyType": { "type": "string" }
+              }
+            }
+          },
+
+          "ForeignIncome": {
+            "type": "array",
+            "description": "Income received from foreign sources in foreign currency.",
+            "items": {
+              "type": "object",
+              "required": ["IncomeDate", "IncomeSource", "IncomeType", "ForeignAccount", "Currency", "IncomeAmount", "ExchangeRateToINR"],
+              "properties": {
+                "IncomeDate": { "type": "string", "format": "date-time" },
+                "IncomeSource": { "type": "string", "description": "Source tag from config (e.g. Stocks)." },
+                "IncomeType": { "type": "string", "description": "Type tag from config (e.g. Dividends)." },
+                "ForeignAccount": { "type": "string", "description": "References ForeignAccounts.ForeignAccount." },
+                "Currency": { "type": "string", "description": "Currency code from config." },
+                "IncomeAmount": { "type": "number", "description": "Amount in foreign currency." },
+                "TaxesWithheld": { "type": "number", "description": "Tax withheld in foreign currency." },
+                "ExchangeRateToINR": { "type": "number", "description": "Exchange rate used for conversion." },
+                "NonTaxable": { "type": "boolean", "default": false, "description": "True if this income is exempt from Indian tax." },
+                "Remarks": { "type": ["string", "null"] },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          },
+
+          "PropertyIncome": {
+            "type": "array",
+            "description": "Rental or other income from owned properties.",
+            "items": {
+              "type": "object",
+              "required": ["IncomeDate", "PropertyID", "GrossIncome"],
+              "properties": {
+                "IncomeDate": { "type": "string", "format": "date-time" },
+                "PropertyID": { "type": "string", "description": "References Properties.PropertyID." },
+                "GrossIncome": { "type": "number" },
+                "TotalExpenses": { "type": "number" },
+                "TDSDeducted": { "type": "number" },
+                "TDSDeductor": { "type": ["string", "null"] },
+                "Details": { "type": ["string", "null"] },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          },
+
+          "CapitalGainsConsolidated": {
+            "type": "array",
+            "description": "Capital gains entries (STCG/LTCG) from any source.",
+            "items": {
+              "type": "object",
+              "required": ["IncomeDate", "IncomeDescription", "SaleValue", "AcquisitionCost"],
+              "properties": {
+                "IncomeDate": { "type": "string", "format": "date-time" },
+                "GainsType": { "type": "string", "description": "STCG or LTCG. Auto-derived from first word of description if not set." },
+                "IncomeDescription": { "type": "string" },
+                "SaleValue": { "type": "number", "description": "Sale proceeds in ₹." },
+                "AcquisitionCost": { "type": "number", "description": "Purchase cost in ₹." },
+                "Expenses": { "type": "number", "description": "Transaction expenses in ₹." },
+                "TDSDeducted": { "type": "number" },
+                "TDSDeductor": { "type": ["string", "null"] },
+                "NonTaxable": { "type": "boolean", "default": false, "description": "True if this gain is exempt." },
+                "Remarks": { "type": ["string", "null"] },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          },
+
+          "OtherIncome": {
+            "type": "array",
+            "description": "Miscellaneous income (bank interest, gifts, etc.).",
+            "items": {
+              "type": "object",
+              "required": ["IncomeDate", "IncomeDescription", "IncomeAmount"],
+              "properties": {
+                "IncomeDate": { "type": "string", "format": "date-time" },
+                "IncomeDescription": { "type": "string" },
+                "IncomeAmount": { "type": "number", "description": "Amount in ₹." },
+                "TDSDeducted": { "type": "number" },
+                "TDSDeductor": { "type": ["string", "null"] },
+                "NonTaxable": { "type": "boolean", "default": false, "description": "True if this income is exempt." },
+                "Remarks": { "type": ["string", "null"] },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          },
+
+          "StockPurchases": {
+            "type": "array",
+            "description": "Foreign stock purchase lots.",
+            "items": {
+              "type": "object",
+              "required": ["PurchaseDate", "BrokerageName", "SecurityName", "CurrencyCode", "PurchaseQuantity", "PurchasePricePerUnit", "ExchangeRateToINR"],
+              "properties": {
+                "PurchaseDate": { "type": "string", "format": "date-time" },
+                "BrokerageName": { "type": "string", "description": "References ForeignAccounts.ForeignAccount." },
+                "SecurityName": { "type": "string", "description": "Stock ticker from config." },
+                "CurrencyCode": { "type": "string", "description": "Currency code from config." },
+                "PurchaseQuantity": { "type": "number" },
+                "PurchasePricePerUnit": { "type": "number" },
+                "PurchaseExpenses": { "type": "number" },
+                "ExchangeRateToINR": { "type": "number" },
+                "PurchaseLotID": { "type": "string", "description": "Auto-generated natural key: SecurityName - Price - Date." },
+                "LotTag": { "type": "integer", "default": 0, "description": "Disambiguation tag when multiple lots share the same natural key." },
+                "IsSTTPaid": { "type": "boolean", "default": false, "description": "Whether Securities Transaction Tax was paid." },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          },
+
+          "StockSales": {
+            "type": "array",
+            "description": "Foreign stock sales with linked purchase lots.",
+            "items": {
+              "type": "object",
+              "required": ["SaleDate", "SaleQuantity", "SaleAmount", "ExchangeRateToINR"],
+              "properties": {
+                "SaleDate": { "type": "string", "format": "date-time" },
+                "SaleQuantity": { "type": "number" },
+                "SaleAmount": { "type": "number", "description": "Gross sale amount in foreign currency." },
+                "SaleExpenses": { "type": "number", "description": "Sale expenses in foreign currency." },
+                "DomesticExpensesINR": { "type": "number", "description": "Additional expenses in ₹." },
+                "ExchangeRateToINR": { "type": "number" },
+                "BrokerageName": { "type": "string", "description": "Set from selected purchase lots." },
+                "SecurityName": { "type": "string", "description": "Set from selected purchase lots." },
+                "PurchaseLots": {
+                  "type": "array",
+                  "description": "Purchase lots consumed by this sale.",
+                  "items": {
+                    "type": "object",
+                    "required": ["PurchaseLotID", "SaleQuantity"],
+                    "properties": {
+                      "PurchaseLotID": { "type": "string", "description": "References StockPurchases.PurchaseLotID." },
+                      "SaleQuantity": { "type": "number", "description": "Quantity sold from this lot." }
+                    }
+                  }
+                },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          },
+
+          "AdvanceTax": {
+            "type": "array",
+            "description": "Advance tax installment payments.",
+            "items": {
+              "type": "object",
+              "required": ["PaymentDate", "EffectiveDate", "TaxAmountPaid"],
+              "properties": {
+                "PaymentDate": { "type": "string", "format": "date-time", "description": "Date the payment was actually made." },
+                "EffectiveDate": { "type": "string", "format": "date-time", "description": "Date used for FY/quarter assignment." },
+                "TaxAmountPaid": { "type": "number", "description": "Amount paid in ₹." },
+                "PaymentDescription": { "type": ["string", "null"] },
+                "Remarks": { "type": ["string", "null"] },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

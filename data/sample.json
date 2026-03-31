@@ -1,0 +1,202 @@
+{
+  "config": {
+    "CapitalGainsTypes": ["STCG", "LTCG"],
+    "ForeignStockTickers": ["AAPL", "GOOG", "MSFT"],
+    "ForeignCurrencies": ["USD"],
+    "CurrencyRates": { "USD": 85 },
+    "CurrencySymbols": { "USD": "$" },
+    "ForeignIncomeSource": ["Stocks"],
+    "ForeignIncomeType": ["Dividends"],
+    "CapitalGainsQuarters": [
+      { "quarter": "cgQ1", "from": "01-Apr", "to": "15-Jun" },
+      { "quarter": "cgQ2", "from": "16-Jun", "to": "15-Sep" },
+      { "quarter": "cgQ3", "from": "16-Sep", "to": "15-Dec" },
+      { "quarter": "cgQ4", "from": "16-Dec", "to": "15-Mar" },
+      { "quarter": "cgQ4a", "from": "16-Mar", "to": "31-Mar" }
+    ],
+    "FYQuarters": [
+      { "quarter": "Q1", "from": "01-Apr", "to": "30-Jun" },
+      { "quarter": "Q2", "from": "01-Jul", "to": "30-Sep" },
+      { "quarter": "Q3", "from": "01-Oct", "to": "31-Dec" },
+      { "quarter": "Q4", "from": "01-Jan", "to": "31-Mar" }
+    ]
+  },
+  "accounts": [
+    {
+      "account": "Sample",
+      "name": "Sample User",
+      "ForeignAccounts": [
+        { "ForeignAccount": "Fidelity-1234", "Entity": "Fidelity", "AccountNumber": "1234" }
+      ],
+      "Properties": [
+        { "PropertyID": "Flat-A1", "PropertyAddress": "Flat A1, Greenview Apartments, Hyderabad", "OwnershipSharePercent": 100, "PropertyType": "Flat" }
+      ],
+      "ForeignIncome": [
+        {
+          "IncomeDate": "2025-06-15T00:00:00",
+          "IncomeSource": "Stocks",
+          "IncomeType": "Dividends",
+          "ForeignAccount": "Fidelity-1234",
+          "Currency": "USD",
+          "IncomeAmount": 120.50,
+          "TaxesWithheld": 18.08,
+          "ExchangeRateToINR": 84.50,
+          "NonTaxable": false,
+          "Remarks": "AAPL Q2 dividend",
+          "IsLocked": false
+        },
+        {
+          "IncomeDate": "2025-09-20T00:00:00",
+          "IncomeSource": "Stocks",
+          "IncomeType": "Dividends",
+          "ForeignAccount": "Fidelity-1234",
+          "Currency": "USD",
+          "IncomeAmount": 85.00,
+          "TaxesWithheld": 12.75,
+          "ExchangeRateToINR": 85.00,
+          "NonTaxable": false,
+          "Remarks": "MSFT Q2 dividend",
+          "IsLocked": false
+        }
+      ],
+      "PropertyIncome": [
+        {
+          "IncomeDate": "2025-07-01T00:00:00",
+          "PropertyID": "Flat-A1",
+          "GrossIncome": 25000,
+          "TotalExpenses": 2000,
+          "TDSDeducted": 0,
+          "TDSDeductor": "",
+          "Details": "Monthly rent Jul 2025",
+          "IsLocked": false
+        },
+        {
+          "IncomeDate": "2025-08-01T00:00:00",
+          "PropertyID": "Flat-A1",
+          "GrossIncome": 25000,
+          "TotalExpenses": 2000,
+          "TDSDeducted": 0,
+          "TDSDeductor": "",
+          "Details": "Monthly rent Aug 2025",
+          "IsLocked": false
+        }
+      ],
+      "CapitalGainsConsolidated": [
+        {
+          "GainsType": "STCG",
+          "IncomeDescription": "STCG-India Equity",
+          "SaleValue": 150000,
+          "AcquisitionCost": 120000,
+          "Expenses": 500,
+          "TDSDeducted": 0,
+          "IncomeDate": "2025-05-20T00:00:00",
+          "NonTaxable": false,
+          "Remarks": "Groww Stocks Q1",
+          "TDSDeductor": null,
+          "IsLocked": false
+        },
+        {
+          "GainsType": "LTCG",
+          "IncomeDescription": "LTCG-India Equity",
+          "SaleValue": 500000,
+          "AcquisitionCost": 350000,
+          "Expenses": 1200,
+          "TDSDeducted": 0,
+          "IncomeDate": "2025-11-10T00:00:00",
+          "NonTaxable": false,
+          "Remarks": "ICICI Direct Q3",
+          "TDSDeductor": null,
+          "IsLocked": false
+        }
+      ],
+      "OtherIncome": [
+        {
+          "IncomeDescription": "Bank Interest",
+          "IncomeAmount": 18500,
+          "TDSDeducted": 1850,
+          "IncomeDate": "2025-03-31T00:00:00",
+          "NonTaxable": false,
+          "Remarks": "SBI FD interest FY2024-25",
+          "TDSDeductor": "SBI",
+          "IsLocked": false
+        }
+      ],
+      "StockPurchases": [
+        {
+          "BrokerageName": "Fidelity-1234",
+          "SecurityName": "AAPL",
+          "CurrencyCode": "USD",
+          "IsSTTPaid": false,
+          "PurchaseDate": "2023-03-15T00:00:00",
+          "PurchaseQuantity": 10,
+          "PurchasePricePerUnit": 152.50,
+          "PurchaseExpenses": 0,
+          "ExchangeRateToINR": 82.00,
+          "PurchaseLotID": "AAPL - 152.50 - 15-Mar-2023",
+          "LotTag": 0,
+          "IsLocked": false
+        },
+        {
+          "BrokerageName": "Fidelity-1234",
+          "SecurityName": "GOOG",
+          "CurrencyCode": "USD",
+          "IsSTTPaid": false,
+          "PurchaseDate": "2024-01-10T00:00:00",
+          "PurchaseQuantity": 5,
+          "PurchasePricePerUnit": 140.25,
+          "PurchaseExpenses": 0,
+          "ExchangeRateToINR": 83.00,
+          "PurchaseLotID": "GOOG - 140.25 - 10-Jan-2024",
+          "LotTag": 0,
+          "IsLocked": false
+        },
+        {
+          "BrokerageName": "Fidelity-1234",
+          "SecurityName": "MSFT",
+          "CurrencyCode": "USD",
+          "IsSTTPaid": false,
+          "PurchaseDate": "2024-06-20T00:00:00",
+          "PurchaseQuantity": 8,
+          "PurchasePricePerUnit": 430.00,
+          "PurchaseExpenses": 0,
+          "ExchangeRateToINR": 83.50,
+          "PurchaseLotID": "MSFT - 430.00 - 20-Jun-2024",
+          "LotTag": 0,
+          "IsLocked": false
+        }
+      ],
+      "StockSales": [
+        {
+          "SaleDate": "2025-08-15T00:00:00",
+          "SaleQuantity": 3,
+          "SaleAmount": 525.00,
+          "SaleExpenses": 1.50,
+          "DomesticExpensesINR": 0,
+          "ExchangeRateToINR": 85.00,
+          "BrokerageName": "Fidelity-1234",
+          "SecurityName": "AAPL",
+          "PurchaseLots": [
+            { "PurchaseLotID": "AAPL - 152.50 - 15-Mar-2023", "SaleQuantity": 3 }
+          ],
+          "IsLocked": false
+        }
+      ],
+      "AdvanceTax": [
+        {
+          "PaymentDate": "2025-06-15T00:00:00",
+          "TaxAmountPaid": 25000,
+          "PaymentDescription": "Advance Tax Q1",
+          "Remarks": "FY 2025-26 first installment",
+          "IsLocked": false
+        },
+        {
+          "PaymentDate": "2025-09-15T00:00:00",
+          "TaxAmountPaid": 20000,
+          "PaymentDescription": "Advance Tax Q2",
+          "Remarks": "FY 2025-26 second installment",
+          "IsLocked": false
+        }
+      ]
+    }
+  ]
+}
