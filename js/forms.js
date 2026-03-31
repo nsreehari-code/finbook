@@ -167,6 +167,13 @@ function openModal(formKey, existingData) {
   document.getElementById('modalSaveBtn').disabled = false;
   document.getElementById('modalValidation').textContent = '';
 
+  // Determine which fields are "short" (can pair in 2-col rows)
+  const visibleFields = def.fields.filter(f => !f.computed);
+  const isShort = f => f.type === 'date' || f.type === 'number' || f.type === 'checkbox' ||
+    f.type === 'select' || f.type === 'configList' || f.type === 'lookup' || f.type === 'dynamicSelect';
+
+  let pendingRow = null; // holds a form-row div waiting for a second short field
+
   def.fields.forEach(f => {
     if (f.computed) return; // skip computed fields in form
 
@@ -231,11 +238,11 @@ function openModal(formKey, existingData) {
 
     // Add Bootstrap classes
     if (input.tagName === 'SELECT') {
-      input.classList.add('form-select', 'form-select-sm');
+      input.classList.add('form-select');
     } else if (f.type === 'checkbox') {
       input.classList.add('form-check-input');
     } else {
-      input.classList.add('form-control', 'form-control-sm');
+      input.classList.add('form-control');
     }
 
     // Set value
@@ -252,8 +259,32 @@ function openModal(formKey, existingData) {
     }
 
     group.appendChild(input);
-    fieldsEl.appendChild(group);
+
+    // Layout: pair short fields into 2-column rows, text fields go full-width
+    if (isShort(f)) {
+      if (pendingRow) {
+        pendingRow.appendChild(group);
+        fieldsEl.appendChild(pendingRow);
+        pendingRow = null;
+      } else {
+        pendingRow = document.createElement('div');
+        pendingRow.className = 'form-row';
+        pendingRow.appendChild(group);
+      }
+    } else {
+      // Flush any pending short field as single-column
+      if (pendingRow) {
+        fieldsEl.appendChild(pendingRow);
+        pendingRow = null;
+      }
+      fieldsEl.appendChild(group);
+    }
   });
+  // Flush final pending row
+  if (pendingRow) {
+    fieldsEl.appendChild(pendingRow);
+    pendingRow = null;
+  }
 
   // Store context on form
   form.dataset.formKey = formKey;

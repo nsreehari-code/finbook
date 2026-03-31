@@ -518,7 +518,7 @@ th.sortable::after { content: ' ↕'; font-size: 0.6875rem; opacity: 0.3; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.form-group { display: flex; flex-direction: column; gap: 0.25rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.2rem; }
 
 .form-group label {
   font-size: 0.75rem;
@@ -526,6 +526,26 @@ th.sortable::after { content: ' ↕'; font-size: 0.6875rem; opacity: 0.3; }
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--fb-text-muted);
+}
+
+.form-group input,
+.form-group select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.form-group .form-check-input {
+  padding: 0;
+}
+
+/* Two-column row for short fields */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+@media (max-width: 480px) {
+  .form-row { grid-template-columns: 1fr; }
 }
 
 /* ---------- Config Sections ---------- */
@@ -701,6 +721,7 @@ th.sortable::after { content: ' ↕'; font-size: 0.6875rem; opacity: 0.3; }
   background-color: var(--fb-surface);
   border-color: var(--fb-border);
   color: var(--fb-text);
+  color-scheme: dark;
 }
 
 [data-theme="dark"] .card {

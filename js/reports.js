@@ -114,8 +114,8 @@ function renderSalaryIncome() {
       <td class="num">${fmtR(r.GrossTaxable)}</td>
       <td class="num">${fmtR(r.TaxablePerquisites)}</td>
       <td class="num">${fmtR(r.Exemptions)}</td>
-      <td class="num">${fmtR(r.Deductions)}</td>
       <td class="num">${fmtR(r.GrossTaxableIncome)}</td>
+      <td class="num">${fmtR(r.Deductions)}</td>
       <td class="num">${fmtR(r.NetTaxableIncome)}</td>
       <td class="num">${fmtR(r.TDSDeducted)}</td>
       <td>${r.Remarks || ''}</td>
