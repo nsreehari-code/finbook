@@ -635,6 +635,21 @@ function renderAllIncome() {
       </tr>`;
   }
 
+  // Compute and show total income cards (summary view only)
+  const aiCardsEl = document.getElementById('aiTotalCards');
+  if (!isDetailed) {
+    const totalIncome_all = rows.filter(r => r.category !== 'Advance Tax').reduce((s, r) => s + r.amount, 0);
+    const totalTDS_all = rows.reduce((s, r) => s + r.tds, 0);
+    const totalRelief_all = rows.reduce((s, r) => s + r.relief, 0);
+    aiCardsEl.innerHTML = `<div class="summary-cards d-flex gap-3 flex-wrap">
+      <div class="summary-card card p-3"><span class="label">Total Taxable Income</span><div class="value ${totalIncome_all >= 0 ? 'positive' : 'negative'}">${fmtR(totalIncome_all)}</div></div>
+      <div class="summary-card card p-3"><span class="label">Tax Relief</span><div class="value">${fmtR(totalRelief_all)}</div></div>
+      <div class="summary-card card p-3"><span class="label">TDS / Taxes Paid</span><div class="value">${fmtR(totalTDS_all)}</div></div>
+    </div>`;
+  } else {
+    aiCardsEl.innerHTML = '';
+  }
+
   // Wire filter change events
   ['aiCategoryFilter', 'aiQuarterFilter'].forEach(id => {
     document.getElementById(id).onchange = renderAllIncome;
@@ -998,6 +1013,14 @@ function renderCapitalGainsView() {
   document.getElementById('cgvTotalExp').textContent = fmtR(filtered.reduce((s, r) => s + r.expenses, 0));
   document.getElementById('cgvTotalGain').textContent = fmtR(filtered.reduce((s, r) => s + r.gainLoss, 0));
   document.getElementById('cgvTotalTDS').textContent = fmtR(filtered.reduce((s, r) => s + r.tds, 0));
+
+  // Summary cards
+  const cgvTotalSaleVal = filtered.reduce((s, r) => s + r.saleValue, 0);
+  const cgvTotalGainVal = filtered.reduce((s, r) => s + r.gainLoss, 0);
+  document.getElementById('cgvTotalCards').innerHTML = `<div class="summary-cards d-flex gap-3 flex-wrap">
+    <div class="summary-card card p-3"><span class="label">Total Sale Consideration</span><div class="value">${fmtR(cgvTotalSaleVal)}</div></div>
+    <div class="summary-card card p-3"><span class="label">Total Gain / Loss</span><div class="value ${cgvTotalGainVal >= 0 ? 'positive' : 'negative'}">${fmtR(cgvTotalGainVal)}</div></div>
+  </div>`;
 
   // Wire filters
   ['cgvSourceFilter', 'cgvQuarterFilter', 'cgvTypeFilter'].forEach(id => {
