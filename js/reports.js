@@ -1209,7 +1209,8 @@ const SECTION_RENDERERS = {
   advanceTax: renderAdvanceTax,
   allIncome: renderAllIncome,
   settings: renderSettings,
-  config: renderConfig
+  config: renderConfig,
+  help: () => {} // static HTML, no render needed
 };
 
 let currentSection = 'allIncome';

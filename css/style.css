@@ -715,6 +715,32 @@ th.sortable::after { content: ' ↕'; font-size: 0.6875rem; opacity: 0.3; }
 .account-card-code { font-weight: 600; }
 .account-card-name { color: var(--fb-text-muted); }
 
+/* ---------- Code blocks ---------- */
+#help code {
+  background: rgba(128, 128, 128, 0.15);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  color: var(--fb-accent);
+}
+#help pre {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--fb-border);
+  color: var(--fb-text);
+}
+#help pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+[data-theme="dark"] #help pre {
+  background: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] #help code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* ---------- Dark mode: Bootstrap overrides ---------- */
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select {

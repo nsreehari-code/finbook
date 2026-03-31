@@ -134,6 +134,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
             Config
           </button>
+          <button class="nav-btn" data-section="help">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Help
+          </button>
         </div>
       </div>
     </nav>
@@ -501,6 +505,67 @@
             <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">All Accounts</h6>
             <div id="accountCards" class="d-flex flex-wrap gap-2 mb-3"></div>
             <button class="btn btn-outline-secondary btn-sm" id="addAccountBtn">+ Add Account</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== HELP ===== -->
+      <section id="help" class="section">
+        <h2 class="fw-bold mb-3">Help</h2>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Loading Data</h6>
+            <p>Click <strong>Load Data File</strong> on the start screen and select your JSON database file (e.g. <code>Sarala_Database.json</code>). The data is cached in your browser's localStorage so it persists across page refreshes. You can also click <strong>Load Sample Data</strong> to explore the app with demo records.</p>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Saving Data</h6>
+            <p>After editing any records, the <strong>Save</strong> button appears in the header. Click it to download the updated JSON file. This saves your raw data only — computed fields are stripped to keep the file clean. On save, the localStorage cache is cleared and you'll need to reload the file.</p>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Exporting Computed Data</h6>
+            <p>The <strong>Export</strong> button (next to Save) downloads a JSON file containing all computed data for the currently selected account and financial year. This includes:</p>
+            <ul>
+              <li><strong>Income Summary</strong> — totals by category (Salary, Foreign, Property, Capital Gains, etc.) with total taxable income, tax relief, and TDS.</li>
+              <li><strong>Capital Gains</strong> — each transaction with lot-matched acquisition cost, holding period, LTCG/STCG classification, and gain/loss.</li>
+              <li><strong>Stock Book</strong> — holdings as-on date with lot-level breakdown, average cost, and total portfolio value.</li>
+              <li><strong>All Income Rows</strong> — unified view of every income entry across all tables.</li>
+              <li><strong>Computed Records</strong> — every table's records with all computed fields included.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Export via URL</h6>
+            <p>You can trigger an export directly by adding query parameters to the URL. This requires data to already be in localStorage from a previous session.</p>
+            <pre class="p-3 rounded"><code>?export=&lt;filename&gt;&amp;account=&lt;account&gt;&amp;fy=&lt;fy&gt;</code></pre>
+            <table class="table table-sm">
+              <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+              <tbody>
+                <tr><td><code>export</code></td><td>Output filename (required to trigger export; <code>.json</code> appended if missing)</td><td><code>Sarala_2025</code></td></tr>
+                <tr><td><code>account</code></td><td>Account code or name (case-insensitive, optional — defaults to current)</td><td><code>Sarala</code></td></tr>
+                <tr><td><code>fy</code></td><td>Financial year (optional — defaults to latest)</td><td><code>2024-25</code></td></tr>
+              </tbody>
+            </table>
+            <p class="mb-0">Example: <code>https://&lt;your-site&gt;/finbook/?export=Sarala_FY2425&amp;fy=2024-25&amp;account=Sarala</code></p>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">CLI Export (Node.js)</h6>
+            <p>A standalone script <a href="export.js" download><code>export.js</code></a> can generate the same computed export from the command line without a browser. Download it and run with Node.js:</p>
+            <pre class="p-3 rounded"><code>node export.js &lt;input.json&gt; &lt;account&gt; &lt;fy&gt; &lt;output.json&gt;</code></pre>
+            <p>Examples:</p>
+            <pre class="p-3 rounded mb-0"><code>node export.js Sarala_Database.json Sarala 2024-25 Sarala_Computed.json
+node export.js Sarala_Database.json Hari All Hari_AllYears.json</code></pre>
           </div>
         </div>
       </section>
