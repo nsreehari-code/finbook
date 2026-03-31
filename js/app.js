@@ -155,6 +155,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateDataButtons();
     populateFilters();
     renderCurrentSection();
+
+    // Handle ?export URL params
+    handleExportParams();
   } else {
     showLoadScreen();
     updateDataButtons();
@@ -171,6 +174,49 @@ function hideLoadScreen() {
   document.getElementById('loadScreen').classList.add('d-none');
   document.querySelector('nav').classList.remove('disabled');
   document.querySelector('main').classList.remove('disabled');
+}
+
+function handleExportParams() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('export')) return;
+
+  // Set account if specified
+  const account = params.get('account');
+  if (account) {
+    const accSelect = document.getElementById('accountFilter');
+    const accounts = getAccounts();
+    const match = accounts.find(a => a.toLowerCase() === account.toLowerCase());
+    if (match) {
+      selectedAccount = match;
+      accSelect.value = match;
+      populateFYFilter();
+    }
+  }
+
+  // Set FY if specified
+  const fy = params.get('fy');
+  if (fy) {
+    const fySelect = document.getElementById('fyFilter');
+    fySelect.value = fy;
+  }
+
+  // Re-render with new filters, then export
+  renderCurrentSection();
+  const data = buildExportData();
+  if (!data) return;
+
+  const filename = params.get('export') || `${(data.account || 'export').replace(/\s+/g, '_')}_Computed_${data.financialYear}`;
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.json') ? filename : filename + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Clean URL without reloading
+  window.history.replaceState({}, '', window.location.pathname);
 }
 
 function populateFilters() {
