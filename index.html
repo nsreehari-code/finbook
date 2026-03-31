@@ -3,480 +3,525 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Taxable Income Tracker</title>
+  <title>Finbook</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Apply saved theme immediately to prevent flash
+    (function(){var t=localStorage.getItem('finbook_theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();
+  </script>
 </head>
 <body>
-  <header>
-    <h1>Taxable Income Tracker</h1>
-    <div class="controls">
-      <label>Account:
-        <select id="accountFilter"></select>
+
+  <!-- ===== HEADER ===== -->
+  <header class="app-header d-flex align-items-center justify-content-between px-3">
+    <h1 class="fs-6 fw-bold mb-0 text-white d-flex align-items-center gap-2">
+      <span class="brand-dot"></span>Finbook
+    </h1>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <label class="text-white-50 small d-flex align-items-center gap-1">Account
+        <select id="accountFilter" class="form-select form-select-sm header-select"></select>
       </label>
-      <label>Financial Year:
-        <select id="fyFilter"></select>
+      <label class="text-white-50 small d-flex align-items-center gap-1">FY
+        <select id="fyFilter" class="form-select form-select-sm header-select"></select>
       </label>
-      <button id="resetBtn" class="btn header-btn hidden" title="Reset and load new file">🔄 Reset</button>
-      <button id="saveDataBtn" class="btn header-btn hidden" title="Save data to JSON file">
-        <span id="dirtyIndicator" class="dirty-dot hidden"></span>💾 Save
+      <button id="resetBtn" class="btn btn-sm btn-header-secondary d-none" title="Reset"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/></svg> Reset</button>
+      <button id="saveDataBtn" class="btn btn-sm btn-header-primary d-none" title="Save">
+        <span id="dirtyIndicator" class="dirty-dot d-none"></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save
+      </button>
+      <button id="themeToggle" class="theme-toggle" title="Toggle day/night mode">
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
       </button>
     </div>
   </header>
 
-  <!-- Load screen: shown when no data is loaded -->
-  <div id="loadScreen" class="load-screen hidden">
-    <div class="load-screen-content">
-      <h2>📂 Load Your Data</h2>
-      <p>Load a previously saved JSON file to get started.</p>
-      <button id="loadScreenBtn" class="btn btn-primary btn-lg">Choose JSON File...</button>
-      <input type="file" id="loadScreenFileInput" accept=".json" style="display:none">
-      <p class="load-screen-divider">or</p>
-      <button id="loadSampleBtn" class="btn btn-sm">Load Sample Data</button>
+  <!-- ===== LOAD SCREEN ===== -->
+  <div id="loadScreen" class="load-screen d-none">
+    <div class="load-screen-content text-center p-5 rounded-4">
+      <div class="load-brand mb-4">
+        <div class="load-logo">
+          <span class="load-logo-dot"></span>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="load-logo-icon"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h5"/></svg>
+        </div>
+        <h1 class="load-title">Finbook</h1>
+        <p class="load-tagline">Your personal taxable income tracker</p>
+      </div>
+      <div class="load-actions">
+        <button id="loadScreenBtn" class="btn btn-load-primary btn-lg px-5">Load your Finbook File</button>
+        <input type="file" id="loadScreenFileInput" accept=".json" class="d-none">
+        <p class="text-white-50 my-3 load-divider">or</p>
+        <button id="loadSampleBtn" class="btn btn-outline-light btn-sm">Load Sample Data</button>
+      </div>
     </div>
   </div>
 
+  <!-- ===== APP LAYOUT ===== -->
   <div class="app-layout">
-  <nav id="mainNav">
-    <button class="nav-hamburger" id="navHamburger" aria-label="Toggle navigation">
-      <span></span><span></span><span></span>
-    </button>
-    <div class="nav-overlay" id="navOverlay"></div>
-    <div class="nav-scroll" id="navScroll">
-      <div class="nav-group">
-        <span class="nav-group-label">Reports</span>
-        <button class="nav-btn active" data-section="allIncome">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>
-          All Income
-        </button>
-        <button class="nav-btn" data-section="capitalGainsView">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          CG View
-        </button>
-        <button class="nav-btn" data-section="stockBook">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-          Stock Book
-        </button>
-      </div>
-      <div class="nav-divider"></div>
-      <div class="nav-group">
-        <span class="nav-group-label">Data Entry</span>
-        <button class="nav-btn" data-section="foreignIncome">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-          Foreign Income
-        </button>
-        <button class="nav-btn" data-section="propertyIncome">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-          Property Income
-        </button>
-        <button class="nav-btn" data-section="capitalGains">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          Capital Gains
-        </button>
-        <button class="nav-btn" data-section="otherIncome">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-          Other Income
-        </button>
-        <button class="nav-btn" data-section="stockPurchases">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-          Stock Purchases
-        </button>
-        <button class="nav-btn" data-section="stockSales">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
-          Stock Sales
-        </button>
-        <button class="nav-btn" data-section="advanceTax">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-          Advance Tax
-        </button>
-      </div>
-      <div class="nav-divider"></div>
-      <div class="nav-group">
-        <span class="nav-group-label">Admin</span>
-        <button class="nav-btn" data-section="settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          Settings
-        </button>
-        <button class="nav-btn" data-section="config">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-          Config
-        </button>
-      </div>
-    </div>
-  </nav>
 
-  <main>
-
-    <!-- Foreign Income -->
-    <section id="foreignIncome" class="section">
-      <h2>Foreign Income</h2>
-      <button class="btn-add" id="addForeignIncome">+ Add Entry</button>
-      <table id="foreignIncomeTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Source</th>
-            <th>Type</th>
-            <th>Foreign Account</th>
-            <th>Currency</th>
-            <th>Amount (Cur)</th>
-            <th>Tax Withheld (Cur)</th>
-            <th>Rate (INR)</th>
-            <th>Amount</th>
-            <th>Tax</th>
-            <th>Taxable</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="8">Total</td>
-            <td id="fiTotalAmountINR"></td>
-            <td id="fiTotalTaxINR"></td>
-            <td colspan="3"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </section>
-
-    <!-- Property Income -->
-    <section id="propertyIncome" class="section">
-      <h2>Property Income</h2>
-      <button class="btn-add" id="addPropertyIncome">+ Add Entry</button>
-      <table id="propertyIncomeTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Property</th>
-            <th>Gross Income</th>
-            <th>Expenses</th>
-            <th>Net Income</th>
-            <th>TDS</th>
-            <th>Details</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="2">Total</td>
-            <td id="piTotalGross"></td>
-            <td id="piTotalExpenses"></td>
-            <td id="piTotalNet"></td>
-            <td id="piTotalTDS"></td>
-            <td colspan="2"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </section>
-
-    <!-- Capital Gains Consolidated -->
-    <section id="capitalGains" class="section">
-      <h2>Capital Gains (Consolidated)</h2>
-      <button class="btn-add" id="addCapitalGains">+ Add Entry</button>
-      <table id="capitalGainsTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Sale Value</th>
-            <th>Acquisition Cost</th>
-            <th>Expenses</th>
-            <th>Gain/Loss</th>
-            <th>TDS</th>
-            <th>Taxable</th>
-            <th>Remarks</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="3">Total</td>
-            <td id="cgTotalSale"></td>
-            <td id="cgTotalAcq"></td>
-            <td id="cgTotalExp"></td>
-            <td id="cgTotalGain"></td>
-            <td id="cgTotalTDS"></td>
-            <td colspan="3"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </section>
-
-    <!-- Capital Gains View (unified) -->
-    <section id="capitalGainsView" class="section">
-      <h2>Capital Gains View</h2>
-      <div class="filter-bar">
-        <label>Source
-          <select id="cgvSourceFilter">
-            <option value="">All</option>
-            <option value="Stock">Stock Sales</option>
-            <option value="Manual">Manual Entries</option>
-          </select>
-        </label>
-        <label>Quarter
-          <select id="cgvQuarterFilter">
-            <option value="">All</option>
-            <option value="cgQ1">cgQ1</option>
-            <option value="cgQ2">cgQ2</option>
-            <option value="cgQ3">cgQ3</option>
-            <option value="cgQ4">cgQ4</option>
-            <option value="cgQ4a">cgQ4a</option>
-          </select>
-        </label>
-        <label>Type
-          <select id="cgvTypeFilter">
-            <option value="">All</option>
-            <option value="STCG">STCG</option>
-            <option value="LTCG">LTCG</option>
-          </select>
-        </label>
-      </div>
-      <table id="capitalGainsViewTable">
-        <thead><tr></tr></thead>
-        <tbody></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="4">Total</td>
-            <td id="cgvTotalSale"></td>
-            <td id="cgvTotalAcq"></td>
-            <td id="cgvTotalExp"></td>
-            <td id="cgvTotalGain"></td>
-            <td id="cgvTotalTDS"></td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
-    </section>
-
-    <!-- Other Income -->
-    <section id="otherIncome" class="section">
-      <h2>Other Income</h2>
-      <button class="btn-add" id="addOtherIncome">+ Add Entry</button>
-      <table id="otherIncomeTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>TDS</th>
-            <th>Taxable</th>
-            <th>Remarks</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="2">Total</td>
-            <td id="oiTotalAmount"></td>
-            <td id="oiTotalTDS"></td>
-            <td colspan="3"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </section>
-
-    <!-- Stock Purchases -->
-    <section id="stockPurchases" class="section">
-      <h2>Stock Purchases</h2>
-      <button class="btn-add" id="addStockPurchase">+ Add Purchase</button>
-      <table id="stockPurchasesTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Brokerage</th>
-            <th>Security</th>
-            <th>Qty</th>
-            <th>Price/Unit (Cur)</th>
-            <th>Currency</th>
-            <th>Total Value (Cur)</th>
-            <th>Rate (INR)</th>
-            <th>Value</th>
-            <th>Lot ID</th>
-            <th>STT</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <!-- Stock Sales -->
-    <section id="stockSales" class="section">
-      <h2>Stock Sales</h2>
-      <button class="btn-add" id="addStockSale">+ Add Sale</button>
-      <table id="stockSalesTable">
-        <thead>
-          <tr>
-            <th>Sale Date</th>
-            <th>Brokerage</th>
-            <th>Security</th>
-            <th>Qty</th>
-            <th>Sale Amount (Cur)</th>
-            <th>Expenses (Cur)</th>
-            <th>Rate (INR)</th>
-            <th>Total Value</th>
-            <th>Purchase Lots</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <!-- Stock Book (transaction log) -->
-    <section id="stockBook" class="section">
-      <h2>Stock Book</h2>
-      <div class="view-filters">
-        <label>Security
-          <select id="sbSecurityFilter">
-            <option value="">All</option>
-          </select>
-        </label>
-        <label>As On
-          <input type="date" id="sbAsOnDate">
-        </label>
-        <div class="toggle-group" id="sbViewToggle" data-value="detailed">
-          <button class="toggle-option active" data-val="detailed">Detailed</button>
-          <button class="toggle-option" data-val="summary">Summary</button>
+    <!-- SIDEBAR NAV -->
+    <nav id="mainNav" class="app-sidebar">
+      <button class="nav-hamburger d-lg-none" id="navHamburger" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-overlay" id="navOverlay"></div>
+      <div class="nav-scroll" id="navScroll">
+        <div class="nav-group">
+          <span class="nav-group-label">Reports</span>
+          <button class="nav-btn active" data-section="allIncome">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>
+            All Income
+          </button>
+          <button class="nav-btn" data-section="capitalGainsView">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Capital Gains
+          </button>
+          <button class="nav-btn" data-section="stockBook">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+            Stock Book
+          </button>
+        </div>
+        <hr class="nav-divider">
+        <div class="nav-group">
+          <span class="nav-group-label">Data Entry</span>
+          <button class="nav-btn" data-section="salaryIncome">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>
+            Salary Income
+          </button>
+          <button class="nav-btn" data-section="foreignIncome">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            Foreign Income
+          </button>
+          <button class="nav-btn" data-section="propertyIncome">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Property Income
+          </button>
+          <button class="nav-btn" data-section="capitalGains">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            Capital Gains
+          </button>
+          <button class="nav-btn" data-section="otherIncome">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            Other Income
+          </button>
+          <button class="nav-btn" data-section="stockPurchases">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+            Stock Purchases
+          </button>
+          <button class="nav-btn" data-section="stockSales">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+            Stock Sales
+          </button>
+          <button class="nav-btn" data-section="advanceTax">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Advance Tax
+          </button>
+        </div>
+        <hr class="nav-divider">
+        <div class="nav-group">
+          <span class="nav-group-label">Admin</span>
+          <button class="nav-btn" data-section="settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Settings
+          </button>
+          <button class="nav-btn" data-section="config">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            Config
+          </button>
         </div>
       </div>
-      <table id="stockBookTable">
-        <thead><tr></tr></thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    </nav>
 
-    <!-- Advance Tax -->
-    <section id="advanceTax" class="section">
-      <h2>Advance Tax Payments</h2>
-      <button class="btn-add" id="addAdvanceTax">+ Add Payment</button>
-      <table id="advanceTaxTable">
-        <thead>
-          <tr>
-            <th>Paid Date</th>
-            <th>Effective Date</th>
-            <th>Amount</th>
-            <th>Description</th>
-            <th>Remarks</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="2">Total</td>
-            <td id="atTotalAmount"></td>
-            <td colspan="3"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </section>
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
 
-    <!-- All Income (unified view) -->
-    <section id="allIncome" class="section active">
-      <h2>All Income &amp; Tax</h2>
-      <div class="view-filters">
-        <div class="toggle-group" id="aiViewToggle" data-value="summary">
-          <button class="toggle-option active" data-val="summary">Summary</button>
-          <button class="toggle-option" data-val="detailed">Detailed</button>
+      <!-- ===== ALL INCOME ===== -->
+      <section id="allIncome" class="section active">
+        <h2 class="fw-bold mb-3">All Income &amp; Tax</h2>
+        <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="aiView" id="aiViewSum" value="summary" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="aiViewSum">Summary</label>
+            <input type="radio" class="btn-check" name="aiView" id="aiViewDet" value="detailed" autocomplete="off">
+            <label class="btn btn-outline-primary" for="aiViewDet">Detailed</label>
+          </div>
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Category
+            <select id="aiCategoryFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+              <option value="Salary">Salary Income</option>
+              <option value="Foreign">Foreign Income</option>
+              <option value="Property">Property Income</option>
+              <option value="Capital Gains">Capital Gains</option>
+              <option value="Capital Gains (Stock)">CG (Stock Sales)</option>
+              <option value="Other">Other Income</option>
+              <option value="Advance Tax">Advance Tax</option>
+            </select>
+          </label>
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Quarter
+            <select id="aiQuarterFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+              <option value="Q1">Q1 (Apr-Jun)</option>
+              <option value="Q2">Q2 (Jul-Sep)</option>
+              <option value="Q3">Q3 (Oct-Dec)</option>
+              <option value="Q4">Q4 (Jan-Mar)</option>
+              <option value="cgQ1">cgQ1</option>
+              <option value="cgQ2">cgQ2</option>
+              <option value="cgQ3">cgQ3</option>
+              <option value="cgQ4">cgQ4</option>
+              <option value="cgQ4a">cgQ4a</option>
+            </select>
+          </label>
         </div>
-        <label>Category
-          <select id="aiCategoryFilter">
-            <option value="">All</option>
-            <option value="Foreign">Foreign Income</option>
-            <option value="Property">Property Income</option>
-            <option value="Capital Gains">Capital Gains</option>
-            <option value="Capital Gains (Stock)">CG (Stock Sales)</option>
-            <option value="Other">Other Income</option>
-            <option value="Advance Tax">Advance Tax</option>
-          </select>
-        </label>
-        <label>Quarter
-          <select id="aiQuarterFilter">
-            <option value="">All</option>
-            <option value="Q1">Q1 (Apr-Jun)</option>
-            <option value="Q2">Q2 (Jul-Sep)</option>
-            <option value="Q3">Q3 (Oct-Dec)</option>
-            <option value="Q4">Q4 (Jan-Mar)</option>
-            <option value="cgQ1">cgQ1</option>
-            <option value="cgQ2">cgQ2</option>
-            <option value="cgQ3">cgQ3</option>
-            <option value="cgQ4">cgQ4</option>
-            <option value="cgQ4a">cgQ4a</option>
-          </select>
-        </label>
-      </div>
-      <table id="allIncomeTable">
-        <thead><tr></tr></thead>
-        <tbody></tbody>
-        <tfoot></tfoot>
-      </table>
-    </section>
+        <div class="table-responsive">
+          <table id="allIncomeTable" class="table table-sm table-hover align-middle">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+      </section>
 
-    <!-- Settings (account-specific) -->
-    <section id="settings" class="section">
-      <h2>Settings <span id="settingsAccountLabel" class="settings-account-label"></span></h2>
-      <div class="settings-group">
-        <h3>Properties</h3>
-        <table id="propertiesTable">
-          <thead><tr><th>ID</th><th>Address</th><th>Ownership %</th><th>Type</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <h3>Foreign Accounts</h3>
-        <table id="foreignAccountsTable">
-          <thead><tr><th>Name</th><th>Entity</th><th>Account #</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
+      <!-- ===== CAPITAL GAINS ===== -->
+      <section id="capitalGainsView" class="section">
+        <h2 class="fw-bold mb-3">Capital Gains View</h2>
+        <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Source
+            <select id="cgvSourceFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+              <option value="Stock">Stock Sales</option>
+              <option value="Manual">Manual Entries</option>
+            </select>
+          </label>
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Quarter
+            <select id="cgvQuarterFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+              <option value="cgQ1">cgQ1</option>
+              <option value="cgQ2">cgQ2</option>
+              <option value="cgQ3">cgQ3</option>
+              <option value="cgQ4">cgQ4</option>
+              <option value="cgQ4a">cgQ4a</option>
+            </select>
+          </label>
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Type
+            <select id="cgvTypeFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+              <option value="STCG">STCG</option>
+              <option value="LTCG">LTCG</option>
+            </select>
+          </label>
+        </div>
+        <div class="table-responsive">
+          <table id="capitalGainsViewTable" class="table table-sm table-hover align-middle">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4"><strong>Total</strong></td>
+                <td class="num" id="cgvTotalSale"></td>
+                <td class="num" id="cgvTotalAcq"></td>
+                <td class="num" id="cgvTotalExp"></td>
+                <td class="num" id="cgvTotalGain"></td>
+                <td class="num" id="cgvTotalTDS"></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
 
-    <!-- Config (global) -->
-    <section id="config" class="section">
-      <h2>Config</h2>
-      <div class="config-section">
-        <h3>Display</h3>
-        <label class="config-toggle-label">
-          <input type="checkbox" id="cfgShowRupeeSymbol">
-          Show ₹ symbol for INR amounts
-        </label>
-      </div>
-      <div id="configLists"></div>
-      <div id="configTables"></div>
-      <div class="accounts-admin">
-        <h3>All Accounts</h3>
-        <div id="accountCards" class="account-cards"></div>
-        <button class="btn btn-sm" id="addAccountBtn">+ Add Account</button>
-      </div>
-    </section>
-  </main>
+      <!-- ===== STOCK BOOK ===== -->
+      <section id="stockBook" class="section">
+        <h2 class="fw-bold mb-3">Stock Book</h2>
+        <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Security
+            <select id="sbSecurityFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+            </select>
+          </label>
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">As On
+            <input type="date" id="sbAsOnDate" class="form-control form-control-sm w-auto">
+          </label>
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="sbView" id="sbViewSum" value="summary" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="sbViewSum">Holdings</label>
+            <input type="radio" class="btn-check" name="sbView" id="sbViewDet" value="detailed" autocomplete="off">
+            <label class="btn btn-outline-primary" for="sbViewDet">Transactions</label>
+          </div>
+          <label id="sbLotsToggle" class="d-flex align-items-center gap-1 text-secondary small fw-medium">
+            <input type="checkbox" id="sbShowLots" class="form-check-input"> View Lots
+          </label>
+        </div>
+        <div id="sbTotalHoldings" class="d-none mb-3"></div>
+        <div class="table-responsive">
+          <table id="stockBookTable" class="table table-sm table-hover align-middle">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-  <!-- Modal for forms -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="modalTitle"></h3>
-        <button class="modal-close" id="modalClose">&times;</button>
+      <!-- ===== FOREIGN INCOME ===== -->
+      <section id="foreignIncome" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Foreign Income</h2>
+          <button class="btn btn-primary btn-sm" id="addForeignIncome">+ Add Entry</button>
+        </div>
+        <div class="table-responsive">
+          <table id="foreignIncomeTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Date</th><th>Source</th><th>Type</th><th>Foreign Account</th><th>Currency</th>
+                <th class="text-end">Amount (Cur)</th><th class="text-end">Tax Withheld (Cur)</th><th class="text-end">Rate (INR)</th>
+                <th class="text-end">Amount</th><th class="text-end">Tax</th><th>Taxable</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="8"><strong>Total</strong></td>
+                <td class="num" id="fiTotalAmountINR"></td>
+                <td class="num" id="fiTotalTaxINR"></td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== PROPERTY INCOME ===== -->
+      <section id="propertyIncome" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Property Income</h2>
+          <button class="btn btn-primary btn-sm" id="addPropertyIncome">+ Add Entry</button>
+        </div>
+        <div class="table-responsive">
+          <table id="propertyIncomeTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Date</th><th>Property</th><th class="text-end">Gross Income</th><th class="text-end">Expenses</th>
+                <th class="text-end">Net Income</th><th class="text-end">TDS</th><th>Details</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2"><strong>Total</strong></td>
+                <td class="num" id="piTotalGross"></td><td class="num" id="piTotalExpenses"></td>
+                <td class="num" id="piTotalNet"></td><td class="num" id="piTotalTDS"></td><td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== CAPITAL GAINS ===== -->
+      <section id="capitalGains" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Capital Gains (Consolidated)</h2>
+          <button class="btn btn-primary btn-sm" id="addCapitalGains">+ Add Entry</button>
+        </div>
+        <div class="table-responsive">
+          <table id="capitalGainsTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Date</th><th>Type</th><th>Description</th><th class="text-end">Sale Value</th>
+                <th class="text-end">Acquisition Cost</th><th class="text-end">Expenses</th><th class="text-end">Gain/Loss</th>
+                <th class="text-end">TDS</th><th>Taxable</th><th>Remarks</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3"><strong>Total</strong></td>
+                <td class="num" id="cgTotalSale"></td><td class="num" id="cgTotalAcq"></td><td class="num" id="cgTotalExp"></td>
+                <td class="num" id="cgTotalGain"></td><td class="num" id="cgTotalTDS"></td><td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== SALARY INCOME ===== -->
+      <section id="salaryIncome" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Salary Income</h2>
+          <button class="btn btn-primary btn-sm" id="addSalaryIncome">+ Add Entry</button>
+        </div>
+        <div class="table-responsive">
+          <table id="salaryIncomeTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr><th>Date</th><th>Employer</th><th class="text-end">Gross Taxable</th><th class="text-end">Perquisites</th><th class="text-end">Exemptions</th><th class="text-end">Deductions</th><th class="text-end">Gross Taxable Income</th><th class="text-end">Net Taxable</th><th class="text-end">TDS</th><th>Remarks</th><th>Actions</th></tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2"><strong>Total</strong></td>
+                <td class="num" id="siTotalGross"></td><td class="num" id="siTotalPerq"></td><td class="num" id="siTotalExempt"></td><td class="num" id="siTotalDeduct"></td>
+                <td class="num" id="siTotalGrossTaxable"></td><td class="num" id="siTotalNet"></td><td class="num" id="siTotalTDS"></td><td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== OTHER INCOME ===== -->
+      <section id="otherIncome" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Other Income</h2>
+          <button class="btn btn-primary btn-sm" id="addOtherIncome">+ Add Entry</button>
+        </div>
+        <div class="table-responsive">
+          <table id="otherIncomeTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr><th>Date</th><th>Description</th><th class="text-end">Amount</th><th class="text-end">TDS</th><th>Taxable</th><th>Remarks</th><th>Actions</th></tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2"><strong>Total</strong></td>
+                <td class="num" id="oiTotalAmount"></td><td class="num" id="oiTotalTDS"></td><td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== STOCK PURCHASES ===== -->
+      <section id="stockPurchases" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Stock Purchases</h2>
+          <button class="btn btn-primary btn-sm" id="addStockPurchase">+ Add Purchase</button>
+        </div>
+        <div class="table-responsive">
+          <table id="stockPurchasesTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th>
+                <th class="text-end">Price/Unit (Cur)</th><th>Currency</th><th class="text-end">Total Value (Cur)</th>
+                <th class="text-end">Rate (INR)</th><th class="text-end">Value</th><th>Lot ID</th><th>STT</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== STOCK SALES ===== -->
+      <section id="stockSales" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Stock Sales</h2>
+          <button class="btn btn-primary btn-sm" id="addStockSale">+ Add Sale</button>
+        </div>
+        <div class="table-responsive">
+          <table id="stockSalesTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Sale Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th>
+                <th class="text-end">Sale Amount (Cur)</th><th class="text-end">Expenses (Cur)</th><th class="text-end">Rate (INR)</th>
+                <th class="text-end">Total Value</th><th>Purchase Lots</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== ADVANCE TAX ===== -->
+      <section id="advanceTax" class="section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="fw-bold mb-0">Advance Tax Payments</h2>
+          <button class="btn btn-primary btn-sm" id="addAdvanceTax">+ Add Payment</button>
+        </div>
+        <div class="table-responsive">
+          <table id="advanceTaxTable" class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Paid Date</th><th>Effective Date</th><th class="text-end">Amount</th>
+                <th>Description</th><th>Remarks</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2"><strong>Total</strong></td>
+                <td class="num" id="atTotalAmount"></td><td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== SETTINGS ===== -->
+      <section id="settings" class="section">
+        <h2 class="fw-bold mb-3">Settings <span id="settingsAccountLabel" class="text-secondary fw-normal fs-6"></span></h2>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Properties</h6>
+            <div class="table-responsive">
+              <table id="propertiesTable" class="table table-sm table-hover align-middle mb-4">
+                <thead><tr><th>ID</th><th>Address</th><th>Ownership %</th><th>Type</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Foreign Accounts</h6>
+            <div class="table-responsive">
+              <table id="foreignAccountsTable" class="table table-sm table-hover align-middle">
+                <thead><tr><th>Name</th><th>Entity</th><th>Account #</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CONFIG ===== -->
+      <section id="config" class="section">
+        <h2 class="fw-bold mb-3">Config</h2>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">Display</h6>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="cfgShowRupeeSymbol">
+              <label class="form-check-label" for="cfgShowRupeeSymbol">Show ₹ symbol for INR amounts</label>
+            </div>
+          </div>
+        </div>
+        <div id="configLists"></div>
+        <div id="configTables"></div>
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-subtitle text-uppercase text-secondary mb-3 small">All Accounts</h6>
+            <div id="accountCards" class="d-flex flex-wrap gap-2 mb-3"></div>
+            <button class="btn btn-outline-secondary btn-sm" id="addAccountBtn">+ Add Account</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div><!-- /.app-layout -->
+
+  <!-- ===== MODAL ===== -->
+  <div id="modal" class="app-modal d-none">
+    <div class="app-modal-content">
+      <div class="app-modal-header d-flex justify-content-between align-items-center px-4 py-3 border-bottom">
+        <h5 id="modalTitle" class="fw-bold mb-0"></h5>
+        <button class="btn-close" id="modalClose" aria-label="Close"></button>
       </div>
       <form id="modalForm">
-        <div id="modalFields"></div>
-        <div class="modal-actions">
-          <span id="modalValidation" class="modal-validation"></span>
+        <div id="modalFields" class="p-4 d-grid gap-3"></div>
+        <div class="d-flex align-items-center gap-2 px-4 py-3 border-top">
+          <span id="modalValidation" class="text-danger small me-auto"></span>
           <button type="submit" class="btn btn-primary" id="modalSaveBtn">Save</button>
-          <button type="button" class="btn" id="modalCancel">Cancel</button>
+          <button type="button" class="btn btn-outline-secondary" id="modalCancel">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 
-  </div><!-- /.app-layout -->
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/data.js"></script>
   <script src="js/forms.js"></script>
   <script src="js/reports.js"></script>

@@ -18,16 +18,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   navOverlay.addEventListener('click', closeMobileNav);
 
-  // Wire toggle groups (pill-style toggles)
-  document.querySelectorAll('.toggle-group').forEach(group => {
-    group.querySelectorAll('.toggle-option').forEach(btn => {
-      btn.addEventListener('click', () => {
-        group.querySelectorAll('.toggle-option').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        group.dataset.value = btn.dataset.val;
-        renderCurrentSection();
-      });
-    });
+  // Wire theme toggle (day/night)
+  const themeToggle = document.getElementById('themeToggle');
+  const savedTheme = localStorage.getItem('finbook_theme');
+  if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+
+  themeToggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    if (next === 'light') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    localStorage.setItem('finbook_theme', next);
+  });
+
+  // Wire Bootstrap radio toggles for view switching
+  document.querySelectorAll('input[name="aiView"], input[name="sbView"]').forEach(radio => {
+    radio.addEventListener('change', renderCurrentSection);
   });
 
   // Wire navigation (always)
@@ -54,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Wire add buttons
+  document.getElementById('addSalaryIncome').addEventListener('click', () => openModal('salaryIncome'));
   document.getElementById('addForeignIncome').addEventListener('click', () => openModal('foreignIncome'));
   document.getElementById('addPropertyIncome').addEventListener('click', () => openModal('propertyIncome'));
   document.getElementById('addCapitalGains').addEventListener('click', () => openModal('capitalGains'));
@@ -145,13 +155,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function showLoadScreen() {
-  document.getElementById('loadScreen').classList.remove('hidden');
+  document.getElementById('loadScreen').classList.remove('d-none');
   document.querySelector('nav').classList.add('disabled');
   document.querySelector('main').classList.add('disabled');
 }
 
 function hideLoadScreen() {
-  document.getElementById('loadScreen').classList.add('hidden');
+  document.getElementById('loadScreen').classList.add('d-none');
   document.querySelector('nav').classList.remove('disabled');
   document.querySelector('main').classList.remove('disabled');
 }

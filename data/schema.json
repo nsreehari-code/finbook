@@ -272,6 +272,27 @@
                 "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
               }
             }
+          },
+
+          "SalaryIncome": {
+            "type": "array",
+            "description": "Salary income entries from employers.",
+            "items": {
+              "type": "object",
+              "required": ["EffectiveDate", "Employer", "GrossTaxable"],
+              "properties": {
+                "EffectiveDate": { "type": "string", "format": "date-time", "description": "Date of salary credit / payroll period." },
+                "Employer": { "type": "string", "description": "Name of the employer." },
+                "GrossTaxable": { "type": "number", "description": "Payroll gross taxable amount (A) in ₹." },
+                "TaxablePerquisites": { "type": "number", "description": "Taxable perquisites (B) in ₹." },
+                "Exemptions": { "type": "number", "description": "Exemptions (C) in ₹." },
+                "Deductions": { "type": "number", "description": "Deductions (D) in ₹." },
+                "TDSDeducted": { "type": "number", "description": "TDS deducted by employer in ₹." },
+                "Remarks": { "type": ["string", "null"] },
+                "IsLocked": { "type": "boolean", "default": false },
+                "Deleted": { "type": "boolean", "description": "Soft-delete flag." }
+              }
+            }
           }
         }
       }

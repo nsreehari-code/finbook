@@ -1,16 +1,19 @@
 // reports.js — Rendering logic for each section/report
 
+// Globe icon for foreign currency columns
+const FC = '<svg class="fc-icon" title="Foreign Currency" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>';
+
 function getSelectedFY() {
   return document.getElementById('fyFilter').value;
 }
 
 function actionBtns(formKey, id, isLocked) {
   if (isLocked) {
-    return `<button class="btn-sm btn-unlock" onclick="unlockEntry('${formKey}','${id}')">Unlock</button>`;
+    return `<button class="btn btn-sm btn-outline-success" title="Unlock" onclick="unlockEntry('${formKey}','${id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></button>`;
   }
-  return `<button class="btn-sm" onclick="openModal('${formKey}', getEntryById('${formKey}','${id}'))">Edit</button>
-          <button class="btn-sm btn-danger" onclick="deleteEntry('${formKey}','${id}')">Del</button>
-          <button class="btn-sm btn-lock" onclick="lockEntry('${formKey}','${id}')">Lock</button>`;
+  return `<button class="btn btn-sm btn-outline-secondary" title="Edit" onclick="openModal('${formKey}', getEntryById('${formKey}','${id}'))"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteEntry('${formKey}','${id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a2 2 0 012-2h0a2 2 0 012 2v2"/></svg></button>
+          <button class="btn btn-sm btn-outline-warning" title="Lock" onclick="lockEntry('${formKey}','${id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></button>`;
 }
 
 function getEntryById(formKey, id) {
@@ -96,6 +99,37 @@ function renderCapitalGains() {
   document.getElementById('cgTotalExp').textContent = fmtR(data.reduce((s, r) => s + (r.Expenses || 0), 0));
   document.getElementById('cgTotalGain').textContent = fmtR(data.reduce((s, r) => s + (r.IncomeAmount || 0), 0));
   document.getElementById('cgTotalTDS').textContent = fmtR(data.reduce((s, r) => s + (r.TDSDeducted || 0), 0));
+}
+
+// ---- Salary Income ----
+function renderSalaryIncome() {
+  const fy = getSelectedFY();
+  const data = filterByFY(getTable('SalaryIncome'), fy, 'SalaryIncome')
+    .sort((a, b) => (a.EffectiveDate || '').localeCompare(b.EffectiveDate || ''));
+
+  document.querySelector('#salaryIncomeTable tbody').innerHTML = data.map(r => `
+    <tr>
+      <td>${fmtDate(r.EffectiveDate)}</td>
+      <td>${r.Employer || ''}</td>
+      <td class="num">${fmtR(r.GrossTaxable)}</td>
+      <td class="num">${fmtR(r.TaxablePerquisites)}</td>
+      <td class="num">${fmtR(r.Exemptions)}</td>
+      <td class="num">${fmtR(r.Deductions)}</td>
+      <td class="num">${fmtR(r.GrossTaxableIncome)}</td>
+      <td class="num">${fmtR(r.NetTaxableIncome)}</td>
+      <td class="num">${fmtR(r.TDSDeducted)}</td>
+      <td>${r.Remarks || ''}</td>
+      <td>${actionBtns('salaryIncome', r.SalaryIncomeID, r.IsLocked)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('siTotalGross').textContent = fmtR(data.reduce((s, r) => s + (r.GrossTaxable || 0), 0));
+  document.getElementById('siTotalPerq').textContent = fmtR(data.reduce((s, r) => s + (r.TaxablePerquisites || 0), 0));
+  document.getElementById('siTotalExempt').textContent = fmtR(data.reduce((s, r) => s + (r.Exemptions || 0), 0));
+  document.getElementById('siTotalDeduct').textContent = fmtR(data.reduce((s, r) => s + (r.Deductions || 0), 0));
+  document.getElementById('siTotalGrossTaxable').textContent = fmtR(data.reduce((s, r) => s + (r.GrossTaxableIncome || 0), 0));
+  document.getElementById('siTotalNet').textContent = fmtR(data.reduce((s, r) => s + (r.NetTaxableIncome || 0), 0));
+  document.getElementById('siTotalTDS').textContent = fmtR(data.reduce((s, r) => s + (r.TDSDeducted || 0), 0));
 }
 
 // ---- Other Income ----
@@ -361,8 +395,8 @@ const AI_COLUMNS = [
   { key: 'category',    label: 'Category',             type: 'string' },
   { key: 'description', label: 'Description',          type: 'string' },
   { key: 'amount',      label: 'Amount',               type: 'number' },
-  { key: 'amountFgn',   label: 'Amount (Cur)',          type: 'number' },
-  { key: 'withheldFgn', label: 'Tax Withheld (Cur)',    type: 'number' },
+  { key: 'amountFgn',   label: 'Amount ' + FC,          type: 'number' },
+  { key: 'withheldFgn', label: 'Tax Withheld ' + FC,    type: 'number' },
   { key: 'relief',      label: 'Tax Relief',            type: 'number' },
   { key: 'tds',         label: 'TDS / Taxes Paid',      type: 'number' },
   { key: 'quarter',     label: 'Quarter',              type: 'string' }
@@ -370,12 +404,18 @@ const AI_COLUMNS = [
 
 function renderAllIncome() {
   const fy = getSelectedFY();
-  const viewToggle = document.getElementById('aiViewToggle');
-  const isDetailed = viewToggle.dataset.value === 'detailed';
+  const isDetailed = document.querySelector('input[name="aiView"]:checked')?.value === 'detailed';
 
   // Show/hide filters based on view mode
-  document.getElementById('aiCategoryFilter').closest('label').style.display = isDetailed ? '' : 'none';
-  document.getElementById('aiQuarterFilter').closest('label').style.display = isDetailed ? '' : 'none';
+  const catLabel = document.getElementById('aiCategoryFilter').closest('label');
+  const qtrLabel = document.getElementById('aiQuarterFilter').closest('label');
+  if (isDetailed) {
+    catLabel.classList.remove('d-none');
+    qtrLabel.classList.remove('d-none');
+  } else {
+    catLabel.classList.add('d-none');
+    qtrLabel.classList.add('d-none');
+  }
 
   const rows = [];
 
@@ -449,6 +489,20 @@ function renderAllIncome() {
     });
   });
 
+  // Salary Income
+  filterByFY(getTable('SalaryIncome'), fy, 'SalaryIncome').forEach(r => {
+    rows.push({
+      date: r.EffectiveDate,
+      category: 'Salary',
+      description: r.Employer || '',
+      amount: r.NetTaxableIncome || 0,
+      amountFgn: 0, withheldFgn: 0, relief: 0,
+      tds: r.TDSDeducted || 0,
+      quarter: r.QFY || '',
+      currency: ''
+    });
+  });
+
   // Other Income
   filterByFY(getTable('OtherIncome'), fy, 'OtherIncome').forEach(r => {
     rows.push({
@@ -502,7 +556,7 @@ function renderAllIncome() {
 
     const arrow = col => aiSort.col === col ? (aiSort.dir === 1 ? ' ▲' : ' ▼') : '';
     document.querySelector('#allIncomeTable thead tr').innerHTML = AI_COLUMNS.map(c =>
-      `<th class="sortable" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
+      `<th class="sortable${c.type === 'number' ? ' text-end' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
     ).join('');
 
     document.querySelectorAll('#allIncomeTable th.sortable').forEach(th => {
@@ -553,9 +607,9 @@ function renderAllIncome() {
     });
 
     document.querySelector('#allIncomeTable thead tr').innerHTML =
-      '<th>Income Head</th><th>Income</th><th>Tax Relief</th><th>TDS / Taxes Paid</th>';
+      '<th>Income Head</th><th class="text-end">Income</th><th class="text-end">Tax Relief</th><th class="text-end">TDS / Taxes Paid</th>';
 
-    const catOrder = ['Foreign', 'Property', 'Capital Gains', 'Capital Gains (Stock)', 'Other', 'Advance Tax'];
+    const catOrder = ['Salary', 'Foreign', 'Property', 'Capital Gains', 'Capital Gains (Stock)', 'Other', 'Advance Tax'];
     const catRows = catOrder.filter(c => cats[c]).map(c => {
       const d = cats[c];
       const rowClass = c === 'Advance Tax' ? '' : (d.income > 0 ? 'row-positive' : d.income < 0 ? 'row-negative' : '');
@@ -591,7 +645,6 @@ function renderAllIncome() {
 function renderStockBook() {
   const asOnInput = document.getElementById('sbAsOnDate');
   const secFilter = document.getElementById('sbSecurityFilter');
-  const viewToggle = document.getElementById('sbViewToggle');
   if (!asOnInput.value) asOnInput.value = new Date().toISOString().slice(0, 10);
   const asOn = new Date(asOnInput.value + 'T23:59:59');
 
@@ -663,13 +716,20 @@ function renderStockBook() {
     return a.type === 'Buy' ? -1 : 1;
   });
 
-  const isDetailed = viewToggle.dataset.value === 'detailed';
+  const isDetailed = document.querySelector('input[name="sbView"]:checked')?.value === 'detailed';
+  const totalEl = document.getElementById('sbTotalHoldings');
+
+  // Hide lots toggle and total when in Transactions view
+  if (isDetailed) {
+    document.getElementById('sbLotsToggle').classList.add('d-none');
+    totalEl.classList.add('d-none');
+  }
 
   if (isDetailed) {
     // Detailed view: all transactions with running balance per security
     const balances = {}; // security -> running qty
     document.querySelector('#stockBookTable thead tr').innerHTML =
-      '<th>Date</th><th>Type</th><th>Security</th><th>Brokerage</th><th>Qty</th><th>Price/Unit (Cur)</th><th>Transaction Value (Cur)</th><th>Rate (INR)</th><th>Transaction Value</th><th>Balance Units</th><th>Lot ID</th>';
+      `<th>Date</th><th>Type</th><th>Security</th><th>Brokerage</th><th class="text-end">Qty</th><th class="text-end">Price/Unit ${FC}</th><th class="text-end">Value ${FC}</th><th class="text-end">Rate (INR)</th><th class="text-end">Value (INR)</th><th class="text-end">Balance Units</th><th>Lot ID</th>`;
 
     document.querySelector('#stockBookTable tbody').innerHTML = rows.map(r => {
       balances[r.security] = (balances[r.security] || 0) + r.qty;
@@ -689,45 +749,110 @@ function renderStockBook() {
       </tr>`;
     }).join('');
   } else {
-    // Summary view: inventory as-on date, one row per security
-    const inventory = {}; // security -> { qty, totalCost, totalCostINR }
-    rows.forEach(r => {
-      if (!inventory[r.security]) inventory[r.security] = { qty: 0, totalCost: 0, totalCostINR: 0 };
+    // Holdings view: inventory as-on date
+    const showLots = document.getElementById('sbShowLots').checked;
+
+    // Show/hide lots toggle (only in Holdings mode)
+    document.getElementById('sbLotsToggle').classList.remove('d-none');
+
+    // Build lot-level data from already-loaded purchases & sales
+    // Compute sold qty per lot from sales (reuse purchases/sales already fetched above)
+    const soldPerLot = {}; // lotId -> total sold
+    sales.forEach(s => {
+      const d = new Date(s.SaleDate);
+      if (asOn && d > asOn) return;
+      (s.PurchaseLots || []).forEach(l => {
+        soldPerLot[l.PurchaseLotID] = (soldPerLot[l.PurchaseLotID] || 0) + (l.SaleQuantity || 0);
+      });
+    });
+
+    // Build per-security inventory + lot details from purchases (already filtered in rows)
+    const inventory = {}; // security -> { qty, totalCost, totalCostINR, lots:[] }
+    rows.filter(r => r.type === 'Buy').forEach(r => {
+      if (!inventory[r.security]) inventory[r.security] = { qty: 0, totalCost: 0, totalCostINR: 0, lots: [] };
       const inv = inventory[r.security];
-      inv.qty += r.qty;
-      if (r.type === 'Buy') {
-        inv.totalCost += r.value;
-        inv.totalCostINR += r.valueINR;
-      } else {
-        // For sells, reduce cost basis proportionally
-        if (inv.qty + Math.abs(r.qty) > 0) {
-          const ratio = Math.abs(r.qty) / (inv.qty + Math.abs(r.qty));
-          inv.totalCost -= inv.totalCost * ratio;
-          inv.totalCostINR -= inv.totalCostINR * ratio;
-        }
+      const sold = soldPerLot[r.lotId] || 0;
+      const remaining = Math.max(0, r.qty - sold);
+      inv.qty += remaining;
+      const costRatio = r.qty > 0 ? remaining / r.qty : 0;
+      const lotCost = r.value * costRatio;
+      const lotCostINR = r.valueINR * costRatio;
+      inv.totalCost += lotCost;
+      inv.totalCostINR += lotCostINR;
+      if (remaining > 0.0005) {
+        inv.lots.push({
+          lotId: r.lotId,
+          date: r.date,
+          brokerage: r.brokerage,
+          remaining: remaining,
+          price: r.price,
+          currency: r.currency,
+          cost: lotCost,
+          costINR: lotCostINR
+        });
       }
     });
 
-    document.querySelector('#stockBookTable thead tr').innerHTML =
-      '<th>Security</th><th>Quantity</th><th>Avg Cost (Cur)</th><th>Total Cost (Cur)</th><th>Total Cost</th>';
+    if (showLots) {
+      document.querySelector('#stockBookTable thead tr').innerHTML =
+        `<th>Security</th><th>Lot ID</th><th>Date</th><th>Brokerage</th><th class="text-end">Remaining</th><th class="text-end">Price ${FC}</th><th class="text-end">Cost ${FC}</th><th class="text-end">Cost (INR)</th>`;
 
-    const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
-    document.querySelector('#stockBookTable tbody').innerHTML = entries.map(([sec, inv]) => {
-      const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
-      const cur = secCurrencyMap[sec] || '';
-      return `<tr>
-        <td>${sec}</td>
-        <td class="num">${inv.qty.toFixed(3)}</td>
-        <td class="num">${fmtC(avg, cur)}</td>
-        <td class="num">${fmtC(inv.totalCost, cur)}</td>
-        <td class="num">${fmtR(inv.totalCostINR)}</td>
-      </tr>`;
-    }).join('');
+      const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
+      let html = '';
+      entries.forEach(([sec, inv]) => {
+        const cur = secCurrencyMap[sec] || '';
+        inv.lots.forEach((lot, i) => {
+          html += `<tr class="lot-detail-row">
+            <td>${i === 0 ? sec : ''}</td>
+            <td class="text-muted">${lot.lotId}</td>
+            <td>${fmtDate(lot.date)}</td>
+            <td>${lot.brokerage}</td>
+            <td class="num">${lot.remaining.toFixed(3)}</td>
+            <td class="num">${fmtC(lot.price, lot.currency)}</td>
+            <td class="num">${fmtC(lot.cost, lot.currency)}</td>
+            <td class="num">${fmtR(lot.costINR)}</td>
+          </tr>`;
+        });
+        // Security total row
+        const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
+        html += `<tr class="lot-total-row fw-bold">
+          <td>${sec} Total</td><td></td><td></td><td></td>
+          <td class="num">${inv.qty.toFixed(3)}</td>
+          <td class="num">${fmtC(avg, cur)}</td>
+          <td class="num">${fmtC(inv.totalCost, cur)}</td>
+          <td class="num">${fmtR(inv.totalCostINR)}</td>
+        </tr>`;
+      });
+      document.querySelector('#stockBookTable tbody').innerHTML = html;
+    } else {
+      document.querySelector('#stockBookTable thead tr').innerHTML =
+        `<th>Security</th><th class="text-end">Quantity</th><th class="text-end">Avg Cost ${FC}</th><th class="text-end">Total Cost ${FC}</th><th class="text-end">Total Cost (INR)</th>`;
+
+      const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
+      document.querySelector('#stockBookTable tbody').innerHTML = entries.map(([sec, inv]) => {
+        const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
+        const cur = secCurrencyMap[sec] || '';
+        return `<tr>
+          <td>${sec}</td>
+          <td class="num">${inv.qty.toFixed(3)}</td>
+          <td class="num">${fmtC(avg, cur)}</td>
+          <td class="num">${fmtC(inv.totalCost, cur)}</td>
+          <td class="num">${fmtR(inv.totalCostINR)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Compute and show total holdings value
+    let grandTotalINR = 0;
+    Object.values(inventory).forEach(inv => { grandTotalINR += inv.totalCostINR; });
+    totalEl.classList.remove('d-none');
+    totalEl.innerHTML = `<div class="summary-cards"><div class="summary-card card p-3"><span class="label">Total Holdings Value</span><div class="value">${fmtR(grandTotalINR)}</div></div></div>`;
   }
 
   // Wire filter change events
   asOnInput.onchange = renderStockBook;
   secFilter.onchange = renderStockBook;
+  document.getElementById('sbShowLots').onchange = renderStockBook;
 }
 
 // ---- Capital Gains View (unified) ----
@@ -836,7 +961,7 @@ function renderCapitalGainsView() {
   // Render sortable headers
   const arrow = col => cgvSort.col === col ? (cgvSort.dir === 1 ? ' ▲' : ' ▼') : '';
   document.querySelector('#capitalGainsViewTable thead tr').innerHTML = CGV_COLUMNS.map(c =>
-    `<th class="sortable" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
+      `<th class="sortable${c.type === 'number' ? ' text-end' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
   ).join('');
 
   document.querySelectorAll('#capitalGainsViewTable th.sortable').forEach(th => {
@@ -882,6 +1007,7 @@ function renderCapitalGainsView() {
 
 // Render map
 const SECTION_RENDERERS = {
+  salaryIncome: renderSalaryIncome,
   foreignIncome: renderForeignIncome,
   propertyIncome: renderPropertyIncome,
   capitalGains: renderCapitalGains,

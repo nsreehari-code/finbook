@@ -196,6 +196,30 @@
           "Remarks": "FY 2025-26 second installment",
           "IsLocked": false
         }
+      ],
+      "SalaryIncome": [
+        {
+          "EffectiveDate": "2025-04-30T00:00:00",
+          "Employer": "TechCorp India",
+          "GrossTaxable": 125000,
+          "TaxablePerquisites": 5000,
+          "Exemptions": 4167,
+          "Deductions": 4167,
+          "TDSDeducted": 12500,
+          "Remarks": "Apr 2025 salary",
+          "IsLocked": false
+        },
+        {
+          "EffectiveDate": "2025-05-31T00:00:00",
+          "Employer": "TechCorp India",
+          "GrossTaxable": 125000,
+          "TaxablePerquisites": 5000,
+          "Exemptions": 4167,
+          "Deductions": 4167,
+          "TDSDeducted": 12500,
+          "Remarks": "May 2025 salary",
+          "IsLocked": false
+        }
       ]
     }
   ]

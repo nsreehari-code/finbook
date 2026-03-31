@@ -8,7 +8,7 @@ let DB = { accounts: [], config: {} };
 const TABLE_NAMES = [
   'AdvanceTax', 'CapitalGainsConsolidated', 'ForeignAccounts',
   'ForeignIncome', 'OtherIncome', 'Properties', 'PropertyIncome',
-  'StockPurchases', 'StockSales'
+  'SalaryIncome', 'StockPurchases', 'StockSales'
 ];
 
 let isDirty = false;
@@ -30,20 +30,20 @@ function updateDataButtons() {
   const resetBtn = document.getElementById('resetBtn');
 
   if (isDirty) {
-    if (saveBtn) saveBtn.classList.remove('hidden');
-    if (dirtyDot) dirtyDot.classList.remove('hidden');
-    if (resetBtn) resetBtn.classList.add('hidden');
+    if (saveBtn) saveBtn.classList.remove('d-none');
+    if (dirtyDot) dirtyDot.classList.remove('d-none');
+    if (resetBtn) resetBtn.classList.add('d-none');
   } else {
-    if (saveBtn) saveBtn.classList.add('hidden');
-    if (dirtyDot) dirtyDot.classList.add('hidden');
-    if (resetBtn) resetBtn.classList.toggle('hidden', !dataLoaded);
+    if (saveBtn) saveBtn.classList.add('d-none');
+    if (dirtyDot) dirtyDot.classList.add('d-none');
+    if (resetBtn) resetBtn.classList.toggle('d-none', !dataLoaded);
   }
 }
 
 // ---- localStorage persistence ----
 
 const STORAGE_KEY = 'taxtracker_db';
-const SCHEMA_VERSION = 8; // bump when schema changes
+const SCHEMA_VERSION = 9; // bump when schema changes
 
 function hasStoredData() {
   if (localStorage.getItem('taxtracker_schema') !== String(SCHEMA_VERSION)) {
@@ -273,6 +273,13 @@ const COMPUTATIONS = {
     r.QFY = dateToQFY(r.SaleDate);
     r.CgQ = dateToCgQ(r.SaleDate);
   },
+  SalaryIncome: (r, i) => {
+    r.SalaryIncomeID = String(i);
+    const gross = (r.GrossTaxable || 0) + (r.TaxablePerquisites || 0);
+    r.GrossTaxableIncome = gross + (r.Exemptions || 0);
+    r.NetTaxableIncome = r.GrossTaxableIncome - (r.Deductions || 0);
+    r.QFY = dateToQFY(r.EffectiveDate);
+  },
   AdvanceTax: (r, i) => {
     r.AdvanceTaxID = String(i);
     r.QFY = dateToQFY(r.EffectiveDate || r.PaymentDate);
@@ -287,6 +294,7 @@ const COMPUTED_FIELDS = {
   OtherIncome: ['OtherIncomeID', 'QFY'],
   StockPurchases: ['StockPurchaseID', 'TotalPurchaseValue', 'TotalPurchasePricePerUnit', 'TotalPurchaseValueINR', 'QFY'],
   StockSales: ['StockSaleID', 'TotalSaleValue', 'TotalSalePricePerUnit', 'TotalSaleValueINR', 'QFY', 'CgQ'],
+  SalaryIncome: ['SalaryIncomeID', 'GrossTaxableIncome', 'NetTaxableIncome', 'QFY'],
   AdvanceTax: ['AdvanceTaxID', 'QFY', 'CgQ']
 };
 
@@ -298,6 +306,7 @@ const DATE_FIELDS = {
   ForeignIncome: 'IncomeDate',
   OtherIncome: 'IncomeDate',
   PropertyIncome: 'IncomeDate',
+  SalaryIncome: 'EffectiveDate',
   StockPurchases: 'PurchaseDate',
   StockSales: 'SaleDate'
 };

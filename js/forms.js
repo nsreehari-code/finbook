@@ -121,6 +121,24 @@ const FORM_DEFS = {
     hasSubform: true
   },
 
+  salaryIncome: {
+    title: 'Salary Income Entry',
+    table: 'SalaryIncome',
+    idField: 'SalaryIncomeID',
+    fields: [
+      { name: 'EffectiveDate', label: 'Date', type: 'date', required: true },
+      { name: 'Employer', label: 'Employer', type: 'text', required: true },
+      { name: 'GrossTaxable', label: 'Payroll Gross Taxable (A)', type: 'number', step: '0.01', required: true },
+      { name: 'TaxablePerquisites', label: 'Taxable Perquisites (B)', type: 'number', step: '0.01' },
+      { name: 'Exemptions', label: 'Exemptions (C)', type: 'number', step: '0.01' },
+      { name: 'Deductions', label: 'Deductions (D)', type: 'number', step: '0.01' },
+      { name: 'TDSDeducted', label: 'TDS Deducted (₹)', type: 'number', step: '0.01' },
+      { name: 'GrossTaxableIncome', label: 'Gross Taxable Income (A+B+C)', type: 'number', step: '0.01', computed: true },
+      { name: 'NetTaxableIncome', label: 'Net Taxable Income (G−D)', type: 'number', step: '0.01', computed: true },
+      { name: 'Remarks', label: 'Remarks', type: 'text' }
+    ]
+  },
+
   advanceTax: {
     title: 'Advance Tax Payment',
     table: 'AdvanceTax',
@@ -211,6 +229,15 @@ function openModal(formKey, existingData) {
     input.name = f.name;
     if (f.required) input.required = true;
 
+    // Add Bootstrap classes
+    if (input.tagName === 'SELECT') {
+      input.classList.add('form-select', 'form-select-sm');
+    } else if (f.type === 'checkbox') {
+      input.classList.add('form-check-input');
+    } else {
+      input.classList.add('form-control', 'form-control-sm');
+    }
+
     // Set value
     if (existingData && existingData[f.name] != null) {
       if (f.type === 'checkbox') {
@@ -289,11 +316,11 @@ function openModal(formKey, existingData) {
       <div class="subform-filters">
         <div class="form-group form-group-inline">
           <label for="field_BrokerageName">Brokerage</label>
-          <select id="field_BrokerageName" required></select>
+          <select id="field_BrokerageName" class="form-select form-select-sm" required></select>
         </div>
         <div class="form-group form-group-inline">
           <label for="field_SecurityName">Security</label>
-          <select id="field_SecurityName" required></select>
+          <select id="field_SecurityName" class="form-select form-select-sm" required></select>
         </div>
       </div>
       <div id="purchaseLotsList"></div>
@@ -455,7 +482,7 @@ function openModal(formKey, existingData) {
 
   validateForm();
 
-  modal.classList.remove('hidden');
+  modal.classList.remove('d-none');
 }
 
 function populateDynamicSelect(selectEl, fieldDef, formDef, existingData) {
@@ -491,7 +518,7 @@ function populateDynamicSelect(selectEl, fieldDef, formDef, existingData) {
 }
 
 function closeModal() {
-  document.getElementById('modal').classList.add('hidden');
+  document.getElementById('modal').classList.add('d-none');
 }
 
 function handleFormSubmit(e) {
