@@ -28,6 +28,7 @@ function updateDataButtons() {
   const saveBtn = document.getElementById('saveDataBtn');
   const dirtyDot = document.getElementById('dirtyIndicator');
   const resetBtn = document.getElementById('resetBtn');
+  const exportBtn = document.getElementById('exportDataBtn');
 
   if (isDirty) {
     if (saveBtn) saveBtn.classList.remove('d-none');
@@ -38,6 +39,7 @@ function updateDataButtons() {
     if (dirtyDot) dirtyDot.classList.add('d-none');
     if (resetBtn) resetBtn.classList.toggle('d-none', !dataLoaded);
   }
+  if (exportBtn) exportBtn.classList.toggle('d-none', !dataLoaded);
 }
 
 // ---- localStorage persistence ----

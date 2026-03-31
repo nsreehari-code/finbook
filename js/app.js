@@ -55,7 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Wire filter changes
-  document.getElementById('fyFilter').addEventListener('change', renderCurrentSection);
+  document.getElementById('fyFilter').addEventListener('change', () => {
+    const asOn = document.getElementById('sbAsOnDate');
+    if (asOn) asOn.value = '';
+    renderCurrentSection();
+  });
   document.getElementById('accountFilter').addEventListener('change', () => {
     selectedAccount = document.getElementById('accountFilter').value;
     populateFYFilter();
@@ -92,6 +96,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Header Save button
   document.getElementById('saveDataBtn').addEventListener('click', saveDataToFile);
+
+  // Header Export button
+  document.getElementById('exportDataBtn').addEventListener('click', exportComputedData);
 
   // Header Reset button
   document.getElementById('resetBtn').addEventListener('click', () => {

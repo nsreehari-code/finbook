@@ -657,10 +657,19 @@ function renderAllIncome() {
 }
 
 // ---- Stock Book (transaction log) ----
+function getAsOnDefault() {
+  const fy = getSelectedFY();
+  const today = new Date().toISOString().slice(0, 10);
+  if (!fy || fy === 'All') return today;
+  const endYear = parseInt(fy.split('-')[0]) + 1;
+  const fyEnd = `${endYear}-03-31`;
+  return fyEnd < today ? fyEnd : today;
+}
+
 function renderStockBook() {
   const asOnInput = document.getElementById('sbAsOnDate');
   const secFilter = document.getElementById('sbSecurityFilter');
-  if (!asOnInput.value) asOnInput.value = new Date().toISOString().slice(0, 10);
+  if (!asOnInput.value) asOnInput.value = getAsOnDefault();
   const asOn = new Date(asOnInput.value + 'T23:59:59');
 
   // Build merged transaction rows from purchases and sales
@@ -1026,6 +1035,164 @@ function renderCapitalGainsView() {
   ['cgvSourceFilter', 'cgvQuarterFilter', 'cgvTypeFilter'].forEach(id => {
     document.getElementById(id).onchange = renderCapitalGainsView;
   });
+}
+
+// ============================================================
+// Export Computations
+// ============================================================
+function buildExportData() {
+  const fy = getSelectedFY();
+  const acct = getCurrentAccountData();
+  if (!acct) return null;
+
+  // Stock Book as-on date
+  const asOnDate = getAsOnDefault();
+
+  // ---- Per-record computed data (all tables, FY-filtered) ----
+  const computedRecords = {};
+  TABLE_NAMES.forEach(t => {
+    const rows = filterByFY(getTable(t), fy, t);
+    computedRecords[t] = rows.map(r => ({ ...r })); // include computed fields
+  });
+
+  // ---- All Income unified rows ----
+  const incomeRows = [];
+  const lotMap = {};
+  getTable('StockPurchases').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
+
+  filterByFY(getTable('ForeignIncome'), fy, 'ForeignIncome').forEach(r => {
+    incomeRows.push({ date: r.IncomeDate, category: 'Foreign', description: `${r.IncomeSource || ''} — ${r.IncomeType || ''}`, amount: r.IncomeAmountINR || 0, relief: r.TaxesWithheldINR || 0, tds: 0, quarter: r.QFY || '' });
+  });
+  filterByFY(getTable('PropertyIncome'), fy, 'PropertyIncome').forEach(r => {
+    incomeRows.push({ date: r.IncomeDate, category: 'Property', description: r.PropertyID || '', amount: r.GrossIncome || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.QFY || '' });
+  });
+  filterByFY(getTable('CapitalGainsConsolidated'), fy, 'CapitalGainsConsolidated').forEach(r => {
+    incomeRows.push({ date: r.IncomeDate, category: 'Capital Gains', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '' });
+  });
+  filterByFY(getTable('StockSales'), fy, 'StockSales').forEach(s => {
+    if (fy && fy !== 'All' && dateToFY(s.SaleDate) !== fy) return;
+    const lots = s.PurchaseLots || [];
+    let acqCostINR = 0;
+    lots.forEach(l => { const p = lotMap[l.PurchaseLotID]; if (p) acqCostINR += (l.SaleQuantity || 0) * (p.TotalPurchasePricePerUnit || 0) * (p.ExchangeRateToINR || 0); });
+    const saleINR = s.TotalSaleValueINR || 0;
+    const expINR = s.DomesticExpensesINR || 0;
+    incomeRows.push({ date: s.SaleDate, category: 'Capital Gains (Stock)', description: `${s.SecurityName || ''} (${s.SaleQuantity || 0} units)`, amount: saleINR - acqCostINR - expINR, relief: 0, tds: 0, quarter: s.CgQ || '' });
+  });
+  filterByFY(getTable('SalaryIncome'), fy, 'SalaryIncome').forEach(r => {
+    incomeRows.push({ date: r.EffectiveDate, category: 'Salary', description: r.Employer || '', amount: r.NetTaxableIncome || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.QFY || '' });
+  });
+  filterByFY(getTable('OtherIncome'), fy, 'OtherIncome').forEach(r => {
+    incomeRows.push({ date: r.IncomeDate, category: 'Other', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.QFY || '' });
+  });
+  filterByFY(getTable('AdvanceTax'), fy, 'AdvanceTax').forEach(r => {
+    incomeRows.push({ date: r.EffectiveDate || r.PaymentDate, category: 'Advance Tax', description: r.PaymentDescription || '', amount: 0, relief: 0, tds: r.TaxAmountPaid || 0, quarter: r.QFY || '' });
+  });
+
+  // ---- Income summary by category ----
+  const catSummary = {};
+  incomeRows.forEach(r => {
+    if (!catSummary[r.category]) catSummary[r.category] = { income: 0, relief: 0, tds: 0 };
+    catSummary[r.category].income += r.amount;
+    catSummary[r.category].relief += r.relief;
+    catSummary[r.category].tds += r.tds;
+  });
+  const totalTaxableIncome = Object.entries(catSummary).filter(([k]) => k !== 'Advance Tax').reduce((s, [, v]) => s + v.income, 0);
+  const totalRelief = Object.values(catSummary).reduce((s, v) => s + v.relief, 0);
+  const totalTDS = Object.values(catSummary).reduce((s, v) => s + v.tds, 0);
+
+  // ---- Capital Gains detail ----
+  const cgRows = [];
+  filterByFY(getTable('StockSales'), fy, 'StockSales').forEach(s => {
+    const lots = s.PurchaseLots || [];
+    let acqCostINR = 0, earliestPurchaseDate = null;
+    lots.forEach(l => {
+      const p = lotMap[l.PurchaseLotID];
+      if (p) {
+        acqCostINR += (l.SaleQuantity || 0) * (p.TotalPurchasePricePerUnit || 0) * (p.ExchangeRateToINR || 0);
+        const pd = p.PurchaseDate ? new Date(p.PurchaseDate) : null;
+        if (pd && (!earliestPurchaseDate || pd < earliestPurchaseDate)) earliestPurchaseDate = pd;
+      }
+    });
+    const saleDate = s.SaleDate ? new Date(s.SaleDate) : null;
+    const holdingDays = (saleDate && earliestPurchaseDate) ? Math.floor((saleDate - earliestPurchaseDate) / 86400000) : null;
+    const holdingType = holdingDays != null ? (holdingDays > 365 ? 'LTCG' : 'STCG') : null;
+    const saleValueINR = s.TotalSaleValueINR || 0;
+    const expINR = s.DomesticExpensesINR || 0;
+    cgRows.push({ date: s.SaleDate, source: 'Stock', security: s.SecurityName || '', quantity: s.SaleQuantity || 0, holdingType, holdingDays, saleValue: saleValueINR, acquisitionCost: acqCostINR, expenses: expINR, gainLoss: saleValueINR - acqCostINR - expINR, quarter: s.CgQ || '' });
+  });
+  filterByFY(getTable('CapitalGainsConsolidated'), fy, 'CapitalGainsConsolidated').forEach(r => {
+    cgRows.push({ date: r.IncomeDate, source: 'Manual', description: r.IncomeDescription || '', holdingType: r.GainsType || null, holdingDays: null, saleValue: r.SaleValue || 0, acquisitionCost: r.AcquisitionCost || 0, expenses: r.Expenses || 0, gainLoss: r.IncomeAmount || 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '', taxable: !r.NonTaxable });
+  });
+  const totalGainLoss = cgRows.reduce((s, r) => s + r.gainLoss, 0);
+  const ltcgTotal = cgRows.filter(r => r.holdingType === 'LTCG').reduce((s, r) => s + r.gainLoss, 0);
+  const stcgTotal = cgRows.filter(r => r.holdingType === 'STCG').reduce((s, r) => s + r.gainLoss, 0);
+
+  // ---- Stock Book holdings as-on ----
+  const purchases = getTable('StockPurchases');
+  const sales = getTable('StockSales');
+  const asOn = new Date(asOnDate + 'T23:59:59');
+  const soldPerLot = {};
+  sales.forEach(s => {
+    if (new Date(s.SaleDate) > asOn) return;
+    (s.PurchaseLots || []).forEach(l => { soldPerLot[l.PurchaseLotID] = (soldPerLot[l.PurchaseLotID] || 0) + (l.SaleQuantity || 0); });
+  });
+  const holdings = {};
+  purchases.forEach(p => {
+    if (new Date(p.PurchaseDate) > asOn) return;
+    const sec = p.SecurityName || '';
+    if (!holdings[sec]) holdings[sec] = { quantity: 0, totalCostINR: 0, lots: [] };
+    const sold = soldPerLot[p.PurchaseLotID] || 0;
+    const remaining = Math.max(0, (p.PurchaseQuantity || 0) - sold);
+    if (remaining < 0.0005) return;
+    const costRatio = (p.PurchaseQuantity || 0) > 0 ? remaining / p.PurchaseQuantity : 0;
+    const costINR = (p.TotalPurchaseValueINR || 0) * costRatio;
+    holdings[sec].quantity += remaining;
+    holdings[sec].totalCostINR += costINR;
+    holdings[sec].lots.push({ lotId: p.PurchaseLotID, purchaseDate: p.PurchaseDate, remaining, pricePerUnit: p.PurchasePricePerUnit || 0, currency: p.CurrencyCode || '', costINR });
+  });
+  const holdingsArray = Object.entries(holdings).filter(([, v]) => v.quantity > 0.0005).sort((a, b) => a[0].localeCompare(b[0])).map(([sec, v]) => ({
+    security: sec, quantity: v.quantity, avgCostINR: v.quantity > 0 ? v.totalCostINR / v.quantity : 0, totalCostINR: v.totalCostINR, lots: v.lots
+  }));
+  const totalPortfolioValue = holdingsArray.reduce((s, h) => s + h.totalCostINR, 0);
+
+  return {
+    exportDate: new Date().toISOString().slice(0, 10),
+    account: acct.name || acct.account,
+    financialYear: fy || 'All',
+    incomeSummary: {
+      byCategory: catSummary,
+      totalTaxableIncome,
+      totalRelief,
+      totalTDS
+    },
+    capitalGains: {
+      transactions: cgRows,
+      totalGainLoss,
+      ltcgTotal,
+      stcgTotal
+    },
+    stockBook: {
+      asOnDate,
+      holdings: holdingsArray,
+      totalPortfolioValue
+    },
+    allIncomeRows: incomeRows,
+    computedRecords
+  };
+}
+
+function exportComputedData() {
+  const data = buildExportData();
+  if (!data) return;
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const acctSlug = (data.account || 'export').replace(/\s+/g, '_');
+  a.download = `${acctSlug}_Computed_${data.financialYear}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // Render map
