@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync, execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const os = require('os');
 
 // Parse --repo flag from argv
@@ -40,21 +40,10 @@ if (!fs.existsSync(REPO_DIR)) {
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 // ---- Git helpers ----
-function git(...args) {
-  const result = spawnSync('git', args, { cwd: REPO_DIR, encoding: 'utf-8' });
+function currentBranch() {
+  const result = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: REPO_DIR, encoding: 'utf-8' });
   if (result.error) throw result.error;
   return result.stdout.trim();
-}
-
-function currentBranch() {
-  return git('rev-parse', '--abbrev-ref', 'HEAD');
-}
-
-function branchExists(name) {
-  const result = spawnSync('git', ['rev-parse', '--verify', name], {
-    cwd: REPO_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
-  });
-  return result.status === 0;
 }
 
 // ---- Copilot call ----
@@ -88,14 +77,6 @@ function callCopilot(prompt) {
   return true;
 }
 
-// ---- Generate batch name ----
-function batchName() {
-  const now = new Date();
-  const d = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const t = now.toISOString().slice(11, 16).replace(':', '');
-  return `batch-${d}-${t}`;
-}
-
 // ---- Find active thread ----
 function findActiveThread() {
   const branch = currentBranch();
@@ -122,96 +103,52 @@ function cmdIngest(docPaths) {
     process.exit(1);
   }
 
-  const batch = batchName();
-  const threadDir = path.join(REPO_DIR, 'threads', batch);
-  const branchName = `steward/${batch}`;
-
-  // Create branch
-  git('checkout', '-b', branchName);
-  console.log(`Branch: ${branchName}`);
-
-  // Create thread dir and copy documents
-  fs.mkdirSync(threadDir, { recursive: true });
-  const docNames = [];
+  // Resolve absolute paths for the prompt
+  const resolvedPaths = [];
   for (const docPath of docPaths) {
     const resolved = path.resolve(docPath);
     if (!fs.existsSync(resolved)) {
       console.error(`File not found: ${docPath}`);
       continue;
     }
-    const name = path.basename(resolved);
-    fs.copyFileSync(resolved, path.join(threadDir, name));
-    docNames.push(name);
+    resolvedPaths.push(resolved);
   }
 
-  if (docNames.length === 0) {
+  if (resolvedPaths.length === 0) {
     console.error('No valid documents. Aborting.');
-    git('checkout', 'main');
-    git('branch', '-D', branchName);
     process.exit(1);
   }
 
-  // Create initial THREAD.md
-  const threadMd = `# Thread: ${batch}
-Branch: ${branchName}
+  console.log('Running steward agent...');
+  const prompt = `Process these documents as a new batch following the batch workflow in copilot-instructions.md:
 
-## Documents
-${docNames.map(d => `- ${d}`).join('\n')}
+Documents to ingest:
+${resolvedPaths.map(p => `- ${p}`).join('\n')}
 
-## Agent Analysis
-_Processing..._
+Steps:
+1. Create a batch branch from main: git checkout -b steward/batch-YYYYMMDD-HHMM
+2. Create the thread directory: threads/<batch-name>/
+3. Copy the documents into the thread directory
+4. Create THREAD.md as an audit log
+5. Read each document, read DB/finbook.json, read kb/knowledge.json
+6. Classify, extract records, check dedup
+7. If no open items: update DB/finbook.json, mark THREAD.md as applied
+8. If open items: write them to THREAD.md, do NOT update DB
+9. If any reusable knowledge is discovered, update kb/knowledge.json
+10. Commit all changes with descriptive messages
 
-## Proposed Records
-_Pending agent analysis._
-
-## Open Items
-_None yet._
-
-## User Response
-_Edit this section to respond to open items._
-
-## Resolution
-_Pending._
-
-## Applied
-_Not yet applied._
-`;
-  fs.writeFileSync(path.join(threadDir, 'THREAD.md'), threadMd, 'utf-8');
-
-  // Commit documents + thread
-  git('add', '-A');
-  git('commit', '-m', `[steward] Thread ${batch}: ${docNames.join(', ')}`);
-  console.log(`Thread created: threads/${batch}/`);
-  console.log(`Documents: ${docNames.join(', ')}`);
-
-  // Call copilot steward
-  console.log('\nRunning steward agent...');
-  const prompt = `You are the @steward agent. Process the documents in threads/${batch}/.
-
-Read each document, read DB/finbook.json, read kb/knowledge.json.
-Classify, extract records, check dedup, and update threads/${batch}/THREAD.md with:
-- Your analysis (account, doc type, summary)
-- Proposed records (structured, with key fields)
-- Open items (if any)
-
-If there are NO open items, also update DB/finbook.json with the new records and mark THREAD.md as applied.
-If there ARE open items, do NOT update DB/finbook.json — just write the open items and proposed records to THREAD.md.
-
-Follow all rules in copilot-instructions.md. Evidence-based only.`;
+Evidence-based only. Follow all rules in copilot-instructions.md.`;
 
   callCopilot(prompt);
 
-  // Commit any changes copilot made
-  git('add', '-A');
-  const diff = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: REPO_DIR });
-  if (diff.status !== 0) {
-    git('commit', '-m', `[steward] Analysis for ${batch}`);
-    console.log('\nSteward analysis committed.');
+  // Show thread status if available
+  const active = findActiveThread();
+  if (active) {
+    const threadMdPath = path.join(active.threadDir, 'THREAD.md');
+    if (fs.existsSync(threadMdPath)) {
+      console.log('\n' + fs.readFileSync(threadMdPath, 'utf-8'));
+    }
   }
-
-  // Show thread status
-  const threadContent = fs.readFileSync(path.join(threadDir, 'THREAD.md'), 'utf-8');
-  console.log('\n' + threadContent);
 }
 
 function cmdClarify() {
@@ -222,9 +159,8 @@ function cmdClarify() {
   }
 
   console.log(`Resuming thread: ${active.batchId}`);
-  console.log('Running steward agent to process user response...');
 
-  const prompt = `You are the @steward agent. The user has updated the "User Response" section of threads/${active.batchId}/THREAD.md.
+  const prompt = `The user has updated the "User Response" section of threads/${active.batchId}/THREAD.md.
 
 Read the THREAD.md to see:
 1. The current open items
@@ -233,9 +169,10 @@ Read the THREAD.md to see:
 Then:
 1. Map the user's response to open items
 2. Resolve what you can
-3. If any response contains reusable knowledge (entity mappings, processing decisions), delegate to @kb-curator
+3. If any response contains reusable knowledge, update kb/knowledge.json
 4. If all open items are resolved: update DB/finbook.json with the records and update THREAD.md
 5. If open items remain: update THREAD.md with remaining items
+6. Commit all changes with descriptive messages
 
 Follow all rules in copilot-instructions.md.`;
 
@@ -245,16 +182,11 @@ Follow all rules in copilot-instructions.md.`;
 
   callCopilot(prompt);
 
-  // Commit
-  git('add', '-A');
-  const diff = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: REPO_DIR });
-  if (diff.status !== 0) {
-    git('commit', '-m', `[steward] Resolution for ${active.batchId}`);
-    console.log('Resolution committed.');
+  // Show thread status if available
+  const threadMdPath = path.join(active.threadDir, 'THREAD.md');
+  if (fs.existsSync(threadMdPath)) {
+    console.log('\n' + fs.readFileSync(threadMdPath, 'utf-8'));
   }
-
-  const threadContent = fs.readFileSync(path.join(active.threadDir, 'THREAD.md'), 'utf-8');
-  console.log('\n' + threadContent);
 }
 
 function cmdConfirm() {
@@ -264,14 +196,42 @@ function cmdConfirm() {
     process.exit(1);
   }
 
-  console.log(`Merging thread: ${active.batchId}`);
-  const branch = active.branch;
+  // Check for unresolved open items
+  const threadMdPath = path.join(active.threadDir, 'THREAD.md');
+  if (fs.existsSync(threadMdPath)) {
+    const content = fs.readFileSync(threadMdPath, 'utf-8');
+    const openMatch = content.match(/## Open Items\n([\s\S]*?)(?=\n## )/);
+    if (openMatch) {
+      const openText = openMatch[1].trim();
+      const hasUnresolved = openText && !openText.match(/^(_?none|_?n\/a|_?no open items)/i);
+      if (hasUnresolved) {
+        console.error('Cannot confirm — there are unresolved open items:');
+        console.error(openText);
+        console.error('\nUse "clarify" to resolve them first.');
+        process.exit(1);
+      }
+    }
+  }
 
-  git('checkout', 'main');
-  git('merge', branch, '--no-ff', '-m', `[steward] Confirm ${active.batchId}`);
-  git('branch', '-d', branch);
+  console.log(`Confirming thread: ${active.batchId}`);
 
-  console.log(`Thread ${active.batchId} confirmed and merged to main.`);
+  const prompt = `The user has confirmed batch ${active.batchId}. The current branch is ${active.branch}.
+
+Merge this batch branch to main:
+1. Run: git checkout main
+2. Run: git merge ${active.branch} --no-ff -m "[steward] Confirm ${active.batchId}"
+3. Run: git branch -d ${active.branch}
+4. Confirm the merge is complete.
+
+Follow the batch workflow in copilot-instructions.md.`;
+
+  // Clear session for fresh context
+  const sessionUuid = path.join(TEMP_DIR, 'session', 'session.uuid');
+  if (fs.existsSync(sessionUuid)) fs.unlinkSync(sessionUuid);
+
+  callCopilot(prompt);
+
+  console.log(`Thread ${active.batchId} confirmed.`);
 }
 
 function cmdStatus() {
