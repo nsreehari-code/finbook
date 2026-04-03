@@ -74,7 +74,7 @@ function callCopilot(prompt) {
     `@${promptFile}`,
     '',
     'false',
-    'finbook-steward'
+    ''
   ], {
     timeout: 900000,
     stdio: 'inherit',
