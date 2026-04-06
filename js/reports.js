@@ -543,23 +543,33 @@ function renderAllIncome() {
     });
   }
 
+  const isAllYears = !fy || fy === 'All';
+  const container = document.getElementById('allIncomeTableContainer');
+
+  if (isAllYears) {
+    // Group rows by FY, render one table per FY
+    const fyGroups = {};
+    filtered.forEach(r => {
+      const rfy = dateToFY(r.date) || 'Unknown';
+      if (!fyGroups[rfy]) fyGroups[rfy] = [];
+      fyGroups[rfy].push(r);
+    });
+    const sortedFYs = Object.keys(fyGroups).sort().reverse();
+    let html = '';
+    sortedFYs.forEach(fyKey => {
+      html += `<h5 class="mt-4 mb-2 fw-bold">FY ${fyKey}</h5>`;
+      html += isDetailed ? buildDetailedTable(fyGroups[fyKey]) : buildSummaryTable(fyGroups[fyKey]);
+    });
+    container.innerHTML = html;
+  } else {
+    // Single FY — one table with FY header
+    const table = isDetailed ? buildDetailedTable(filtered) : buildSummaryTable(filtered);
+    container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">FY ${fy}</h5>${table}`;
+  }
+
+  // Wire sort handlers for detailed view
   if (isDetailed) {
-    // Detailed view: row-by-row with sortable headers
-    const sc = AI_COLUMNS.find(c => c.key === aiSort.col);
-    if (sc) {
-      filtered.sort((a, b) => {
-        const av = a[sc.key], bv = b[sc.key];
-        if (sc.type === 'number') return ((av || 0) - (bv || 0)) * aiSort.dir;
-        return (av || '').localeCompare(bv || '') * aiSort.dir;
-      });
-    }
-
-    const arrow = col => aiSort.col === col ? (aiSort.dir === 1 ? ' ▲' : ' ▼') : '';
-    document.querySelector('#allIncomeTable thead tr').innerHTML = AI_COLUMNS.map(c =>
-      `<th class="sortable${c.type === 'number' ? ' text-end' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
-    ).join('');
-
-    document.querySelectorAll('#allIncomeTable th.sortable').forEach(th => {
+    container.querySelectorAll('th.sortable').forEach(th => {
       th.addEventListener('click', () => {
         const col = th.dataset.sort;
         if (aiSort.col === col) { aiSort.dir *= -1; }
@@ -567,72 +577,6 @@ function renderAllIncome() {
         renderAllIncome();
       });
     });
-
-    document.querySelector('#allIncomeTable tbody').innerHTML = filtered.map(r => {
-      const rowClass = r.category === 'Advance Tax' ? '' : (r.amount > 0 ? 'row-positive' : r.amount < 0 ? 'row-negative' : '');
-      return `
-      <tr class="${rowClass}">
-        <td>${fmtDate(r.date)}</td>
-        <td>${r.category}</td>
-        <td>${r.description}</td>
-        <td class="num">${r.amount ? fmtR(r.amount) : ''}</td>
-        <td class="num">${r.amountFgn ? fmtC(r.amountFgn, r.currency) : ''}</td>
-        <td class="num">${r.withheldFgn ? fmtC(r.withheldFgn, r.currency) : ''}</td>
-        <td class="num">${r.relief ? fmtR(r.relief) : ''}</td>
-        <td class="num">${r.tds ? fmtR(r.tds) : ''}</td>
-        <td>${r.quarter}</td>
-      </tr>
-    `;
-    }).join('');
-
-    document.querySelector('#allIncomeTable tfoot').innerHTML = `
-      <tr class="total-row">
-        <td colspan="3">Total</td>
-        <td class="num">${fmtR(filtered.reduce((s, r) => s + r.amount, 0))}</td>
-        <td class="num">${fmt(filtered.reduce((s, r) => s + r.amountFgn, 0))}</td>
-        <td class="num">${fmt(filtered.reduce((s, r) => s + r.withheldFgn, 0))}</td>
-        <td class="num">${fmtR(filtered.reduce((s, r) => s + r.relief, 0))}</td>
-        <td class="num">${fmtR(filtered.reduce((s, r) => s + r.tds, 0))}</td>
-        <td></td>
-      </tr>`;
-
-  } else {
-    // Summary view: one row per category
-    const cats = {};
-    filtered.forEach(r => {
-      if (!cats[r.category]) cats[r.category] = { income: 0, relief: 0, tds: 0 };
-      cats[r.category].income += r.amount;
-      cats[r.category].relief += r.relief;
-      cats[r.category].tds += r.tds;
-    });
-
-    document.querySelector('#allIncomeTable thead tr').innerHTML =
-      '<th>Income Head</th><th class="text-end">Income</th><th class="text-end">Tax Relief</th><th class="text-end">TDS / Taxes Paid</th>';
-
-    const catOrder = ['Salary', 'Foreign', 'Property', 'Capital Gains', 'Capital Gains (Stock)', 'Other', 'Advance Tax'];
-    const catRows = catOrder.filter(c => cats[c]).map(c => {
-      const d = cats[c];
-      const rowClass = c === 'Advance Tax' ? '' : (d.income > 0 ? 'row-positive' : d.income < 0 ? 'row-negative' : '');
-      return `<tr class="${rowClass}">
-        <td>${c}</td>
-        <td class="num">${d.income ? fmtR(d.income) : ''}</td>
-        <td class="num">${d.relief ? fmtR(d.relief) : ''}</td>
-        <td class="num">${d.tds ? fmtR(d.tds) : ''}</td>
-      </tr>`;
-    });
-
-    const totalIncome = Object.entries(cats).filter(([k]) => k !== 'Advance Tax').reduce((s, [, v]) => s + v.income, 0);
-    const totalRelief = Object.values(cats).reduce((s, v) => s + v.relief, 0);
-    const totalTDS = Object.values(cats).reduce((s, v) => s + v.tds, 0);
-
-    document.querySelector('#allIncomeTable tbody').innerHTML = catRows.join('');
-    document.querySelector('#allIncomeTable tfoot').innerHTML = `
-      <tr class="total-row">
-        <td>Total Taxable Income</td>
-        <td class="num">${fmtR(totalIncome)}</td>
-        <td class="num">${fmtR(totalRelief)}</td>
-        <td class="num">${fmtR(totalTDS)}</td>
-      </tr>`;
   }
 
   // Compute and show total income cards (summary view only)
@@ -654,6 +598,90 @@ function renderAllIncome() {
   ['aiCategoryFilter', 'aiQuarterFilter'].forEach(id => {
     document.getElementById(id).onchange = renderAllIncome;
   });
+}
+
+function buildSummaryTable(rows) {
+  const cats = {};
+  rows.forEach(r => {
+    if (!cats[r.category]) cats[r.category] = { income: 0, relief: 0, tds: 0 };
+    cats[r.category].income += r.amount;
+    cats[r.category].relief += r.relief;
+    cats[r.category].tds += r.tds;
+  });
+
+  const catOrder = ['Salary', 'Foreign', 'Property', 'Capital Gains', 'Capital Gains (Stock)', 'Other', 'Advance Tax'];
+  const catRows = catOrder.filter(c => cats[c]).map(c => {
+    const d = cats[c];
+    const rowClass = c === 'Advance Tax' ? '' : (d.income > 0 ? 'row-positive' : d.income < 0 ? 'row-negative' : '');
+    return `<tr class="${rowClass}">
+      <td>${c}</td>
+      <td class="num">${d.income ? fmtR(d.income) : ''}</td>
+      <td class="num">${d.relief ? fmtR(d.relief) : ''}</td>
+      <td class="num">${d.tds ? fmtR(d.tds) : ''}</td>
+    </tr>`;
+  });
+
+  const totalIncome = Object.entries(cats).filter(([k]) => k !== 'Advance Tax').reduce((s, [, v]) => s + v.income, 0);
+  const totalRelief = Object.values(cats).reduce((s, v) => s + v.relief, 0);
+  const totalTDS = Object.values(cats).reduce((s, v) => s + v.tds, 0);
+
+  return `<table class="table table-sm table-hover align-middle">
+    <thead><tr>
+      <th>Income Head</th><th class="text-end">Income</th><th class="text-end">Tax Relief</th><th class="text-end">TDS / Taxes Paid</th>
+    </tr></thead>
+    <tbody>${catRows.join('')}</tbody>
+    <tfoot><tr class="total-row">
+      <td>Total Taxable Income</td>
+      <td class="num">${fmtR(totalIncome)}</td>
+      <td class="num">${fmtR(totalRelief)}</td>
+      <td class="num">${fmtR(totalTDS)}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
+function buildDetailedTable(rows) {
+  const sc = AI_COLUMNS.find(c => c.key === aiSort.col);
+  if (sc) {
+    rows.sort((a, b) => {
+      const av = a[sc.key], bv = b[sc.key];
+      if (sc.type === 'number') return ((av || 0) - (bv || 0)) * aiSort.dir;
+      return (av || '').localeCompare(bv || '') * aiSort.dir;
+    });
+  }
+
+  const arrow = col => aiSort.col === col ? (aiSort.dir === 1 ? ' ▲' : ' ▼') : '';
+  const thead = AI_COLUMNS.map(c =>
+    `<th class="sortable${c.type === 'number' ? ' text-end' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
+  ).join('');
+
+  const tbody = rows.map(r => {
+    const rowClass = r.category === 'Advance Tax' ? '' : (r.amount > 0 ? 'row-positive' : r.amount < 0 ? 'row-negative' : '');
+    return `<tr class="${rowClass}">
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.category}</td>
+      <td>${r.description}</td>
+      <td class="num">${r.amount ? fmtR(r.amount) : ''}</td>
+      <td class="num">${r.amountFgn ? fmtC(r.amountFgn, r.currency) : ''}</td>
+      <td class="num">${r.withheldFgn ? fmtC(r.withheldFgn, r.currency) : ''}</td>
+      <td class="num">${r.relief ? fmtR(r.relief) : ''}</td>
+      <td class="num">${r.tds ? fmtR(r.tds) : ''}</td>
+      <td>${r.quarter}</td>
+    </tr>`;
+  }).join('');
+
+  return `<table class="table table-sm table-hover align-middle">
+    <thead><tr>${thead}</tr></thead>
+    <tbody>${tbody}</tbody>
+    <tfoot><tr class="total-row">
+      <td colspan="3">Total</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.amount, 0))}</td>
+      <td class="num">${fmt(rows.reduce((s, r) => s + r.amountFgn, 0))}</td>
+      <td class="num">${fmt(rows.reduce((s, r) => s + r.withheldFgn, 0))}</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.relief, 0))}</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.tds, 0))}</td>
+      <td></td>
+    </tr></tfoot>
+  </table>`;
 }
 
 // ---- Stock Book (transaction log) ----
@@ -750,28 +778,28 @@ function renderStockBook() {
   }
 
   if (isDetailed) {
-    // Detailed view: all transactions with running balance per security
-    const balances = {}; // security -> running qty
-    document.querySelector('#stockBookTable thead tr').innerHTML =
-      `<th>Date</th><th>Type</th><th>Security</th><th>Brokerage</th><th class="text-end">Qty</th><th class="text-end">Price/Unit ${FC}</th><th class="text-end">Value ${FC}</th><th class="text-end">Rate (INR)</th><th class="text-end">Value (INR)</th><th class="text-end">Balance Units</th><th>Lot ID</th>`;
+    // Detailed view: all transactions with FY grouping
+    const fy = getSelectedFY();
+    const isAllYears = !fy || fy === 'All';
+    const container = document.getElementById('sbTableContainer');
 
-    document.querySelector('#stockBookTable tbody').innerHTML = rows.map(r => {
-      balances[r.security] = (balances[r.security] || 0) + r.qty;
-      const bal = balances[r.security];
-      return `<tr class="${r.type === 'Sell' ? 'row-sell' : 'row-buy'}">
-        <td>${fmtDate(r.date)}</td>
-        <td>${r.type}</td>
-        <td>${r.security}</td>
-        <td>${r.brokerage}</td>
-        <td class="num">${r.qty > 0 ? '+' : ''}${r.qty}</td>
-        <td class="num">${fmtC(r.price, r.currency)}</td>
-        <td class="num">${fmtC(r.value, r.currency)}</td>
-        <td class="num">${fmt(r.rate)}</td>
-        <td class="num">${fmtR(r.valueINR)}</td>
-        <td class="num">${bal.toFixed(3)}</td>
-        <td>${r.lotId}</td>
-      </tr>`;
-    }).join('');
+    if (isAllYears) {
+      const fyGroups = {};
+      rows.forEach(r => {
+        const rfy = dateToFY(r.date) || 'Unknown';
+        if (!fyGroups[rfy]) fyGroups[rfy] = [];
+        fyGroups[rfy].push(r);
+      });
+      const sortedFYs = Object.keys(fyGroups).sort().reverse();
+      let html = '';
+      sortedFYs.forEach(fyKey => {
+        html += `<h5 class="mt-4 mb-2 fw-bold">FY ${fyKey}</h5>`;
+        html += buildStockTxnTable(fyGroups[fyKey]);
+      });
+      container.innerHTML = html;
+    } else {
+      container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">FY ${fy}</h5>` + buildStockTxnTable(rows);
+    }
   } else {
     // Holdings view: inventory as-on date
     const showLots = document.getElementById('sbShowLots').checked;
@@ -818,15 +846,14 @@ function renderStockBook() {
     });
 
     if (showLots) {
-      document.querySelector('#stockBookTable thead tr').innerHTML =
-        `<th>Security</th><th>Lot ID</th><th>Date</th><th>Brokerage</th><th class="text-end">Remaining</th><th class="text-end">Price ${FC}</th><th class="text-end">Cost ${FC}</th><th class="text-end">Cost (INR)</th>`;
+      const thead = `<th>Security</th><th>Lot ID</th><th>Date</th><th>Brokerage</th><th class="text-end">Remaining</th><th class="text-end">Price ${FC}</th><th class="text-end">Cost ${FC}</th><th class="text-end">Cost (INR)</th>`;
 
       const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
-      let html = '';
+      let tbody = '';
       entries.forEach(([sec, inv]) => {
         const cur = secCurrencyMap[sec] || '';
         inv.lots.forEach((lot, i) => {
-          html += `<tr class="lot-detail-row">
+          tbody += `<tr class="lot-detail-row">
             <td>${i === 0 ? sec : ''}</td>
             <td class="text-muted">${lot.lotId}</td>
             <td>${fmtDate(lot.date)}</td>
@@ -839,7 +866,7 @@ function renderStockBook() {
         });
         // Security total row
         const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
-        html += `<tr class="lot-total-row fw-bold">
+        tbody += `<tr class="lot-total-row fw-bold">
           <td>${sec} Total</td><td></td><td></td><td></td>
           <td class="num">${inv.qty.toFixed(3)}</td>
           <td class="num">${fmtC(avg, cur)}</td>
@@ -847,13 +874,12 @@ function renderStockBook() {
           <td class="num">${fmtR(inv.totalCostINR)}</td>
         </tr>`;
       });
-      document.querySelector('#stockBookTable tbody').innerHTML = html;
+      document.getElementById('sbTableContainer').innerHTML = `<h5 class="mt-4 mb-2 fw-bold">Holdings as on ${fmtDate(asOnInput.value)}</h5><table class="table table-sm table-hover align-middle"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
     } else {
-      document.querySelector('#stockBookTable thead tr').innerHTML =
-        `<th>Security</th><th class="text-end">Quantity</th><th class="text-end">Avg Cost ${FC}</th><th class="text-end">Total Cost ${FC}</th><th class="text-end">Total Cost (INR)</th>`;
+      const thead = `<th>Security</th><th class="text-end">Quantity</th><th class="text-end">Avg Cost ${FC}</th><th class="text-end">Total Cost ${FC}</th><th class="text-end">Total Cost (INR)</th>`;
 
       const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
-      document.querySelector('#stockBookTable tbody').innerHTML = entries.map(([sec, inv]) => {
+      const tbody = entries.map(([sec, inv]) => {
         const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
         const cur = secCurrencyMap[sec] || '';
         return `<tr>
@@ -864,6 +890,7 @@ function renderStockBook() {
           <td class="num">${fmtR(inv.totalCostINR)}</td>
         </tr>`;
       }).join('');
+      document.getElementById('sbTableContainer').innerHTML = `<h5 class="mt-4 mb-2 fw-bold">Holdings as on ${fmtDate(asOnInput.value)}</h5><table class="table table-sm table-hover align-middle"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
     }
 
     // Compute and show total holdings value
@@ -877,6 +904,34 @@ function renderStockBook() {
   asOnInput.onchange = renderStockBook;
   secFilter.onchange = renderStockBook;
   document.getElementById('sbShowLots').onchange = renderStockBook;
+}
+
+function buildStockTxnTable(rows) {
+  const balances = {};
+  const thead = `<th>Date</th><th>Type</th><th>Security</th><th>Brokerage</th><th class="text-end">Qty</th><th class="text-end">Price/Unit ${FC}</th><th class="text-end">Value ${FC}</th><th class="text-end">Rate (INR)</th><th class="text-end">Value (INR)</th><th class="text-end">Balance Units</th><th>Lot ID</th>`;
+
+  const tbody = rows.map(r => {
+    balances[r.security] = (balances[r.security] || 0) + r.qty;
+    const bal = balances[r.security];
+    return `<tr class="${r.type === 'Sell' ? 'row-sell' : 'row-buy'}">
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.type}</td>
+      <td>${r.security}</td>
+      <td>${r.brokerage}</td>
+      <td class="num">${r.qty > 0 ? '+' : ''}${r.qty}</td>
+      <td class="num">${fmtC(r.price, r.currency)}</td>
+      <td class="num">${fmtC(r.value, r.currency)}</td>
+      <td class="num">${fmt(r.rate)}</td>
+      <td class="num">${fmtR(r.valueINR)}</td>
+      <td class="num">${bal.toFixed(3)}</td>
+      <td>${r.lotId}</td>
+    </tr>`;
+  }).join('');
+
+  return `<table class="table table-sm table-hover align-middle">
+    <thead><tr>${thead}</tr></thead>
+    <tbody>${tbody}</tbody>
+  </table>`;
 }
 
 // ---- Capital Gains View (unified) ----
@@ -982,13 +1037,30 @@ function renderCapitalGainsView() {
     });
   }
 
-  // Render sortable headers
-  const arrow = col => cgvSort.col === col ? (cgvSort.dir === 1 ? ' ▲' : ' ▼') : '';
-  document.querySelector('#capitalGainsViewTable thead tr').innerHTML = CGV_COLUMNS.map(c =>
-      `<th class="sortable${c.type === 'number' ? ' text-end' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
-  ).join('');
+  // Render into container with FY grouping
+  const isAllYears = !fy || fy === 'All';
+  const container = document.getElementById('cgvTableContainer');
 
-  document.querySelectorAll('#capitalGainsViewTable th.sortable').forEach(th => {
+  if (isAllYears) {
+    const fyGroups = {};
+    filtered.forEach(r => {
+      const rfy = dateToFY(r.date) || 'Unknown';
+      if (!fyGroups[rfy]) fyGroups[rfy] = [];
+      fyGroups[rfy].push(r);
+    });
+    const sortedFYs = Object.keys(fyGroups).sort().reverse();
+    let html = '';
+    sortedFYs.forEach(fyKey => {
+      html += `<h5 class="mt-4 mb-2 fw-bold">FY ${fyKey}</h5>`;
+      html += buildCgvTable(fyGroups[fyKey]);
+    });
+    container.innerHTML = html;
+  } else {
+    container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">FY ${fy}</h5>` + buildCgvTable(filtered);
+  }
+
+  // Wire sort handlers
+  container.querySelectorAll('th.sortable').forEach(th => {
     th.addEventListener('click', () => {
       const col = th.dataset.sort;
       if (cgvSort.col === col) { cgvSort.dir *= -1; }
@@ -996,32 +1068,6 @@ function renderCapitalGainsView() {
       renderCapitalGainsView();
     });
   });
-
-  // Render rows
-  document.querySelector('#capitalGainsViewTable tbody').innerHTML = filtered.map(r => {
-    const rowClass = r.gainLoss > 0 ? 'row-positive' : r.gainLoss < 0 ? 'row-negative' : '';
-    return `
-    <tr class="${rowClass}">
-      <td>${fmtDate(r.date)}</td>
-      <td>${r.source}</td>
-      <td>${r.description}</td>
-      <td>${r.holdingType}</td>
-      <td class="num">${fmtR(r.saleValue)}</td>
-      <td class="num">${fmtR(r.acqCost)}</td>
-      <td class="num">${fmtR(r.expenses)}</td>
-      <td class="num ${r.gainLoss >= 0 ? 'positive' : 'negative'}">${fmtR(r.gainLoss)}</td>
-      <td class="num">${r.tds ? fmtR(r.tds) : ''}</td>
-      <td>${r.quarter}</td>
-    </tr>
-  `;
-  }).join('');
-
-  // Totals
-  document.getElementById('cgvTotalSale').textContent = fmtR(filtered.reduce((s, r) => s + r.saleValue, 0));
-  document.getElementById('cgvTotalAcq').textContent = fmtR(filtered.reduce((s, r) => s + r.acqCost, 0));
-  document.getElementById('cgvTotalExp').textContent = fmtR(filtered.reduce((s, r) => s + r.expenses, 0));
-  document.getElementById('cgvTotalGain').textContent = fmtR(filtered.reduce((s, r) => s + r.gainLoss, 0));
-  document.getElementById('cgvTotalTDS').textContent = fmtR(filtered.reduce((s, r) => s + r.tds, 0));
 
   // Summary cards
   const cgvTotalSaleVal = filtered.reduce((s, r) => s + r.saleValue, 0);
@@ -1035,6 +1081,43 @@ function renderCapitalGainsView() {
   ['cgvSourceFilter', 'cgvQuarterFilter', 'cgvTypeFilter'].forEach(id => {
     document.getElementById(id).onchange = renderCapitalGainsView;
   });
+}
+
+function buildCgvTable(rows) {
+  const arrow = col => cgvSort.col === col ? (cgvSort.dir === 1 ? ' ▲' : ' ▼') : '';
+  const thead = CGV_COLUMNS.map(c =>
+    `<th class="sortable${c.type === 'number' ? ' text-end' : ''}" data-sort="${c.key}">${c.label}${arrow(c.key)}</th>`
+  ).join('');
+
+  const tbody = rows.map(r => {
+    const rowClass = r.gainLoss > 0 ? 'row-positive' : r.gainLoss < 0 ? 'row-negative' : '';
+    return `<tr class="${rowClass}">
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.source}</td>
+      <td>${r.description}</td>
+      <td>${r.holdingType}</td>
+      <td class="num">${fmtR(r.saleValue)}</td>
+      <td class="num">${fmtR(r.acqCost)}</td>
+      <td class="num">${fmtR(r.expenses)}</td>
+      <td class="num ${r.gainLoss >= 0 ? 'positive' : 'negative'}">${fmtR(r.gainLoss)}</td>
+      <td class="num">${r.tds ? fmtR(r.tds) : ''}</td>
+      <td>${r.quarter}</td>
+    </tr>`;
+  }).join('');
+
+  return `<table class="table table-sm table-hover align-middle">
+    <thead><tr>${thead}</tr></thead>
+    <tbody>${tbody}</tbody>
+    <tfoot><tr class="total-row">
+      <td colspan="4"><strong>Total</strong></td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.saleValue, 0))}</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.acqCost, 0))}</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.expenses, 0))}</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.gainLoss, 0))}</td>
+      <td class="num">${fmtR(rows.reduce((s, r) => s + r.tds, 0))}</td>
+      <td></td>
+    </tr></tfoot>
+  </table>`;
 }
 
 // ============================================================
