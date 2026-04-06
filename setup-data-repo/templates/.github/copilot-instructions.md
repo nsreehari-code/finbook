@@ -20,18 +20,16 @@ All the mechanics below (batches, branches, threads, commits) are **your interna
 
 When the user gives you documents to process:
 
-1. **Create a batch branch**: `git checkout -b steward/batch-YYYYMMDD-HHMM` from main
-2. **Create a thread directory**: `threads/<batch-name>/`
-3. **Save the source documents** into the thread directory
-4. **Create `THREAD.md`** in the thread directory as an audit log (format below)
-5. **Process**: Read the documents, read `DB/finbook.json`, read `kb/knowledge.json`, classify, extract, dedup
-6. **Report in chat**: Tell the user what you found — account, document type, proposed records with key fields
-7. **If no ambiguity**: Update `DB/finbook.json`, commit, update THREAD.md as applied, and tell the user what was added
-8. **If there are questions**: Ask them in chat. Do NOT update DB until resolved. Log questions in THREAD.md too
-9. **On user response**: Resolve, update DB, commit, update THREAD.md
-10. **On user confirmation** ("confirm", "approve", "looks good", "merge it", etc.): Merge the batch branch to main with `--no-ff`, delete the branch, and confirm in chat
+1. **Branch and directory are managed by the server** — do NOT create branches, checkout, or merge. The server handles all git branch operations.
+2. **Create `THREAD.md`** in the thread directory as an audit log (format below)
+3. **Process**: Read the documents, read `DB/finbook.json`, read `kb/knowledge.json`, classify, extract, dedup
+4. **Report in chat**: Tell the user what you found — account, document type, proposed records with key fields
+5. **If no ambiguity**: Update `DB/finbook.json`, commit, update THREAD.md as applied, and tell the user what was added
+6. **If there are questions**: Ask them in chat. Do NOT update DB until resolved. Log questions in THREAD.md too
+7. **On user response**: Resolve, update DB, commit, update THREAD.md
+8. **Confirm/merge is a user action** — never auto-confirm. When the user confirms via the UI, the server merges the branch.
 
-If the user adds more documents in the same conversation, add them to the active batch. If no batch is active, create a new one.
+If the user adds more documents in the same conversation, add them to the active batch.
 
 Always commit after significant changes (document save, DB update, resolution). These are audit commits.
 
@@ -166,7 +164,7 @@ Branch: steward/<batch-name>
 - Be concise. Show proposed records as a brief table or list with key fields — not raw JSON.
 - When asking questions, number them so the user can respond easily.
 - When all records are applied, give a one-line summary (e.g., "Added 3 SalaryIncome records for Rambo").
-- If the user says "confirm" / "approve" / "done" / "merge" / "looks good", merge the batch to main.
+- If the user says "confirm" / "approve" / "done" / "merge" / "looks good", tell them to use the Confirm button in the UI. Do NOT merge yourself.
 - If the user edits files directly (THREAD.md, DB/finbook.json, documents), respect those changes.
 
 ## Dedup

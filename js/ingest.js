@@ -103,7 +103,7 @@ function createFileStagingUI(dropZoneEl, fileInputEl, stagedContainerEl, inputEl
 }
 
 // ---- Shared: unified send (files + optional message, or message only) ----
-async function unifiedSend(batchId, staging, inputEl, sendBtnEl, dropZoneEl, chatContainerId) {
+async function unifiedSend(batchId, staging, inputEl, sendBtnEl, dropZoneEl, chatContainerId, confirmBtnEl) {
   const message = inputEl.value.trim();
   const files = staging.getFiles();
 
@@ -140,6 +140,7 @@ async function unifiedSend(batchId, staging, inputEl, sendBtnEl, dropZoneEl, cha
   inputEl.disabled = true;
   inputEl.value = '';
   if (dropZoneEl) dropZoneEl.classList.add('disabled');
+  if (confirmBtnEl) confirmBtnEl.disabled = true;
   staging.clear();
   showProcessingIndicator(chatContainerId);
 
@@ -155,7 +156,7 @@ async function unifiedSend(batchId, staging, inputEl, sendBtnEl, dropZoneEl, cha
       if (dropZoneEl) dropZoneEl.classList.remove('disabled');
       return null;
     }
-    connectSSE(targetBatchId, chatContainerId, sendBtnEl, inputEl, dropZoneEl);
+    connectSSE(targetBatchId, chatContainerId, sendBtnEl, inputEl, dropZoneEl, confirmBtnEl);
   } catch (e) {
     removeProcessingIndicator(chatContainerId);
     appendChat(chatContainerId, 'system', 'Failed: ' + e.message);
@@ -169,11 +170,12 @@ async function unifiedSend(batchId, staging, inputEl, sendBtnEl, dropZoneEl, cha
 }
 
 // ---- Shared: SSE connection ----
-function connectSSE(batchId, chatContainerId, sendBtnEl, inputEl, dropZoneEl) {
+function connectSSE(batchId, chatContainerId, sendBtnEl, inputEl, dropZoneEl, confirmBtnEl) {
   const sse = new EventSource(`/api/batch/${batchId}/stream`);
 
   sse.addEventListener('processing', e => {
     showProcessingIndicator(chatContainerId);
+    if (confirmBtnEl) confirmBtnEl.disabled = true;
   });
 
   sse.addEventListener('message', e => {
@@ -195,6 +197,7 @@ function connectSSE(batchId, chatContainerId, sendBtnEl, inputEl, dropZoneEl) {
     if (sendBtnEl) sendBtnEl.disabled = false;
     if (inputEl) { inputEl.disabled = false; inputEl.placeholder = 'Add files or type a message...'; }
     if (dropZoneEl) dropZoneEl.classList.remove('disabled');
+    if (confirmBtnEl) confirmBtnEl.disabled = false;
     loadBatches();
     sse.close();
   });
@@ -403,9 +406,8 @@ function renderBatchCard(batch) {
             </button>
           </div>
         </div>
-        ${batch.status === 'ready' ? `
-          <div class="batch-actions d-flex gap-2 mt-2">
-            <button class="btn btn-success btn-sm batch-confirm-btn" data-batch="${batch.id}">
+        <div class="batch-actions d-flex gap-2 mt-2">
+            <button class="btn btn-success btn-sm batch-confirm-btn" data-batch="${batch.id}"${batch.status !== 'ready' || batch.processing ? ' disabled' : ''}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
               Confirm &amp; Merge
             </button>
@@ -413,7 +415,7 @@ function renderBatchCard(batch) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Discard
             </button>
-          </div>` : ''}
+          </div>
       </div>`;
   }
 
@@ -482,12 +484,15 @@ function wireExistingBatchCard(batch) {
   }
 
   // If batch is processing, show spinner and connect SSE
+  const confirmBtn = document.querySelector(`.batch-confirm-btn[data-batch="${batch.id}"]`);
   if (batch.processing) {
     showProcessingIndicator(chatContainerId);
+    if (confirmBtn) confirmBtn.disabled = true;
     connectSSE(batch.id, chatContainerId,
       document.querySelector(`.batch-send-btn[data-batch="${batch.id}"]`),
       document.querySelector(`.batch-chat-input[data-batch="${batch.id}"]`),
-      document.getElementById(`batchDropZone-${batch.id}`));
+      document.getElementById(`batchDropZone-${batch.id}`),
+      confirmBtn);
   }
 
   // Wire file staging + unified send (reusing shared helpers)
@@ -505,22 +510,28 @@ function wireExistingBatchCard(batch) {
   if (sendBtn) sendBtn.disabled = true;
 
   if (sendBtn && input) {
-    const doSend = () => unifiedSend(batch.id, staging, input, sendBtn, dropZone, chatContainerId);
+    const doSend = () => unifiedSend(batch.id, staging, input, sendBtn, dropZone, chatContainerId, confirmBtn);
     sendBtn.addEventListener('click', doSend);
     input.addEventListener('keydown', e => { if (e.key === 'Enter' && !sendBtn.disabled) doSend(); });
     input.addEventListener('input', updateSendState);
   }
 
-  // Wire confirm
-  const confirmBtn = document.querySelector(`.batch-confirm-btn[data-batch="${batch.id}"]`);
+  // Wire confirm (confirmBtn already queried above)
   if (confirmBtn) {
     confirmBtn.addEventListener('click', async () => {
       confirmBtn.disabled = true;
       try {
-        await fetch(`/api/batch/${batch.id}/confirm`, { method: 'POST' });
+        const resp = await fetch(`/api/batch/${batch.id}/confirm`, { method: 'POST' });
+        if (!resp.ok) {
+          const err = await resp.json();
+          appendChat(chatContainerId, 'system', err.error || 'Confirm failed');
+          confirmBtn.disabled = false;
+          return;
+        }
         appendChat(chatContainerId, 'system', 'Confirming and merging...');
-        connectSSE(batch.id, chatContainerId, sendBtn, input, dropZone);
+        connectSSE(batch.id, chatContainerId, sendBtn, input, dropZone, confirmBtn);
       } catch (e) {
+        appendChat(chatContainerId, 'system', 'Confirm failed: ' + e.message);
         confirmBtn.disabled = false;
       }
     });

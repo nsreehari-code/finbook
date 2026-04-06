@@ -73,6 +73,16 @@ function currentBranch(rd) {
   } catch { return 'unknown'; }
 }
 
+// Find actual branch name for a batchId (could be "batch-*" or "steward/batch-*")
+function findBatchBranch(rd, batchId) {
+  const { execSync } = require('child_process');
+  try {
+    const branches = execSync('git branch --list', { cwd: rd, encoding: 'utf-8' })
+      .split('\n').map(b => b.replace(/^\*?\s+/, '').trim()).filter(Boolean);
+    return branches.find(b => b === batchId || b === `steward/${batchId}`) || batchId;
+  } catch { return batchId; }
+}
+
 // ---- Parse multipart form data ----
 function parseMultipart(buf, boundary) {
   const files = [];
@@ -164,7 +174,9 @@ function listBatches() {
 
   const rd = repoDir();
   const branch = currentBranch(rd);
-  const activeBatchName = branch.startsWith('batch-') ? branch : null;
+  // Match branch names: "batch-*" or "steward/batch-*"
+  const batchMatch = branch.match(/(?:^|\/)(batch-\d{8}-\d{4})$/);
+  const activeBatchName = batchMatch ? batchMatch[1] : null;
 
   const entries = fs.readdirSync(td, { withFileTypes: true });
   return entries
@@ -279,6 +291,12 @@ function callBatchCopilot(batchId, onDone) {
 1. **You (Copilot CLI)** — read files, process, write two outputs (see below). Stdout is discarded.
 2. **Bridge Server** — manages files and chat persistence; reads your response file and streams it to the user.
 3. **User's Chat UI** — user only sees the content of the response file you write.
+
+## Git constraints — DO NOT VIOLATE
+- Do NOT create branches, checkout branches, or merge branches. The server manages all branch operations.
+- Do NOT run git merge, git checkout, or git branch commands.
+- You ARE allowed to: git add, git commit (version_enabled handles this), read files, write files.
+- Confirm/merge is a user action through the UI. Never auto-confirm or auto-merge.
 
 ## Two outputs required
 
@@ -459,19 +477,26 @@ function handleAPI(req, res) {
 
       const { execSync } = require('child_process');
 
-      // Ensure batch branch exists
+      // Ensure batch branch exists (could be "batch-*" or "steward/batch-*")
       try {
         const branch = currentBranch(rd);
-        if (branch !== batchId) {
+        const existingBranch = findBatchBranch(rd, batchId);
+        if (branch !== batchId && branch !== `steward/${batchId}`) {
           if (branch !== 'main') {
             execSync('git checkout main', { cwd: rd, encoding: 'utf-8' });
           }
-          execSync(`git checkout -b ${batchId}`, { cwd: rd, encoding: 'utf-8' });
+          if (existingBranch !== batchId) {
+            // Branch exists with a different name (e.g. steward/batch-*)
+            execSync(`git checkout ${existingBranch}`, { cwd: rd, encoding: 'utf-8' });
+          } else {
+            execSync(`git checkout -b ${batchId}`, { cwd: rd, encoding: 'utf-8' });
+          }
         }
       } catch (e) {
         // Branch may already exist — try switching to it
         try {
-          execSync(`git checkout ${batchId}`, { cwd: rd, encoding: 'utf-8' });
+          const existingBranch = findBatchBranch(rd, batchId);
+          execSync(`git checkout ${existingBranch}`, { cwd: rd, encoding: 'utf-8' });
         } catch (e2) {
           return jsonResp(res, 500, { error: `Failed to setup branch: ${e2.message}` });
         }
@@ -582,10 +607,34 @@ function handleAPI(req, res) {
     if (!repoDir()) return jsonResp(res, 400, { error: 'No repo connected' });
     const rd = repoDir();
     const batchId = confirmMatch[1];
-    const branchName = batchId;
+    const branchName = findBatchBranch(rd, batchId);
 
+    // Guard: block confirm if batch is still processing
+    const td = threadsDir();
+    const processingFile = path.join(td, batchId, 'chat', '.processing');
+    if (fs.existsSync(processingFile)) {
+      return jsonResp(res, 409, { error: 'Batch is still processing. Wait for completion before confirming.' });
+    }
+
+    // Guard: block confirm if batch has open items
+    const threadPath = path.join(td, batchId, 'THREAD.md');
+    const threadContent = fs.existsSync(threadPath) ? fs.readFileSync(threadPath, 'utf-8') : '';
+    if (checkOpenItems(threadContent)) {
+      return jsonResp(res, 409, { error: 'Batch has open items. Resolve them before confirming.' });
+    }
+
+    // Guard: clean up stale .processing file in branch before merging
     try {
       const { execSync } = require('child_process');
+      const branchProcessing = path.join(rd, 'threads', batchId, 'chat', '.processing');
+      const currentBr = currentBranch(rd);
+      if (currentBr !== branchName) {
+        execSync(`git checkout ${branchName}`, { cwd: rd, encoding: 'utf-8' });
+      }
+      if (fs.existsSync(branchProcessing)) {
+        execSync(`git rm -f threads/${batchId}/chat/.processing`, { cwd: rd, encoding: 'utf-8' });
+        execSync('git commit -m "[steward] cleanup: remove stale .processing"', { cwd: rd, encoding: 'utf-8' });
+      }
       execSync('git checkout main', { cwd: rd, encoding: 'utf-8' });
       execSync(`git merge ${branchName} --no-ff -m "[steward] Confirm ${batchId}"`, { cwd: rd, encoding: 'utf-8' });
       try { execSync(`git branch -d ${branchName}`, { cwd: rd, encoding: 'utf-8' }); } catch (e) { /* ignore */ }
@@ -611,7 +660,7 @@ function handleAPI(req, res) {
     if (!repoDir()) return jsonResp(res, 400, { error: 'No repo connected' });
     const rd = repoDir();
     const batchId = discardMatch[1];
-    const branchName = batchId;
+    const branchName = findBatchBranch(rd, batchId);
 
     try {
       const { execSync } = require('child_process');
