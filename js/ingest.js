@@ -272,11 +272,6 @@ function showChatModal(batchId, messages) {
   let backdrop = document.querySelector('.modal-backdrop');
   if (backdrop) backdrop.remove();
 
-  const chatHtml = messages.map(msg => {
-    const icon = msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🤖' : 'ℹ️';
-    return `<div class="chat-bubble chat-${msg.role}"><span class="chat-icon">${icon}</span><span class="chat-text">${escapeHtml(msg.text)}</span></div>`;
-  }).join('');
-
   const modalEl = document.createElement('div');
   modalEl.innerHTML = `
     <div class="modal fade" id="chatModal" tabindex="-1">
@@ -287,12 +282,15 @@ function showChatModal(batchId, messages) {
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <div class="chat-messages">${chatHtml}</div>
+            <div class="chat-messages" id="modalChat-${batchId}"></div>
           </div>
         </div>
       </div>
     </div>`;
   document.body.appendChild(modalEl.firstElementChild);
+
+  // Reuse appendChat for consistent markdown rendering
+  for (const msg of messages) appendChat(`modalChat-${batchId}`, msg.role, msg.text);
 
   const bsModal = new bootstrap.Modal(document.getElementById('chatModal'));
   bsModal.show();
