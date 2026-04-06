@@ -170,6 +170,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     showLoadScreen();
     updateDataButtons();
   }
+
+  // ---- Repo connection: detect server and wire connect ----
+  detectServer();
 });
 
 function showLoadScreen() {
@@ -295,4 +298,108 @@ function restoreHashFY() {
     const match = [...fySelect.options].find(o => o.value === fy);
     if (match) fySelect.value = fy;
   }
+}
+
+// ---- Repo connection ----
+
+let repoMode = false;
+let repoDataWatcher = null;
+
+async function detectServer() {
+  try {
+    const resp = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
+    if (!resp.ok) return;
+    const health = await resp.json();
+
+    // Server is running — show repo connect area on load screen
+    const area = document.getElementById('repoConnectArea');
+    if (area) area.classList.remove('d-none');
+
+    // Load available repos into dropdown
+    const reposResp = await fetch('/api/repos');
+    const repos = await reposResp.json();
+    const select = document.getElementById('repoSelect');
+    select.innerHTML = repos
+      .filter(r => r.valid)
+      .map(r => `<option value="${r.id}">${r.name}</option>`)
+      .join('');
+
+    // If already connected (server remembers), auto-load
+    if (health.activeRepo) {
+      await loadRepoData();
+    }
+
+    // Wire connect button
+    document.getElementById('connectRepoBtn').addEventListener('click', async () => {
+      const repoId = select.value;
+      if (!repoId) return;
+      try {
+        const resp = await fetch('/api/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: repoId })
+        });
+        if (!resp.ok) { alert('Failed to connect'); return; }
+        await loadRepoData();
+      } catch (e) {
+        alert('Connection failed: ' + e.message);
+      }
+    });
+  } catch (e) {
+    // Server not running — repo connect stays hidden, file mode only
+  }
+}
+
+async function loadRepoData() {
+  try {
+    const resp = await fetch('/api/data');
+    if (!resp.ok) { alert('Failed to load repo data'); return; }
+    DB = await resp.json();
+    if (!DB.config) DB.config = {};
+
+    repoMode = true;
+    dataLoaded = true;
+    isDirty = false;
+    selectedAccount = DB.accounts.length > 0 ? DB.accounts[0].account : null;
+
+    updateDataButtons();
+    populateFilters();
+    restoreFromHash();
+    renderCurrentSection();
+    hideLoadScreen();
+
+    // Show ingest nav
+    const ingestNav = document.getElementById('navGroupIngest');
+    if (ingestNav) ingestNav.classList.remove('d-none');
+
+    // Load ingest batches
+    if (typeof loadBatches === 'function') loadBatches();
+
+    // Start watching for DB changes
+    startDataWatcher();
+  } catch (e) {
+    alert('Failed to load repo data: ' + e.message);
+  }
+}
+
+function startDataWatcher() {
+  if (repoDataWatcher) repoDataWatcher.close();
+  repoDataWatcher = new EventSource('/api/data/watch');
+  repoDataWatcher.onmessage = async (e) => {
+    const data = JSON.parse(e.data);
+    if (data.event === 'db-changed') {
+      // Reload DB from repo
+      try {
+        const resp = await fetch('/api/data');
+        if (resp.ok) {
+          DB = await resp.json();
+          if (!DB.config) DB.config = {};
+          isDirty = false;
+          updateDataButtons();
+          populateFilters();
+          renderCurrentSection();
+        }
+      } catch (e) { /* ignore */ }
+    }
+  };
 }

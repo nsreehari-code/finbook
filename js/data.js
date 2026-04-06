@@ -108,6 +108,26 @@ function stripComputedFields(db) {
 
 async function saveDataToFile() {
   const jsonStr = JSON.stringify(stripComputedFields(DB), null, 2);
+
+  // Repo mode: save via API
+  if (typeof repoMode !== 'undefined' && repoMode) {
+    try {
+      const resp = await fetch('/api/data', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: jsonStr
+      });
+      if (!resp.ok) { alert('Failed to save to repo'); return; }
+      isDirty = false;
+      updateDataButtons();
+      return;
+    } catch (e) {
+      alert('Save failed: ' + e.message);
+      return;
+    }
+  }
+
+  // File mode: download as file
   const blob = new Blob([jsonStr], { type: 'application/json' });
 
   try {

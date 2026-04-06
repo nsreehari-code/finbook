@@ -18,10 +18,16 @@ const os = require('os');
 // Parse --repo flag from argv
 let args = process.argv.slice(2);
 let repoArg = null;
+let batchIdArg = null;
 const repoIdx = args.indexOf('--repo');
 if (repoIdx !== -1) {
   repoArg = args[repoIdx + 1];
   args.splice(repoIdx, 2);
+}
+const batchIdx = args.indexOf('--batch-id');
+if (batchIdx !== -1) {
+  batchIdArg = args[batchIdx + 1];
+  args.splice(batchIdx, 2);
 }
 
 if (!repoArg) {
@@ -80,8 +86,8 @@ function callCopilot(prompt) {
 // ---- Find active thread ----
 function findActiveThread() {
   const branch = currentBranch();
-  if (!branch.startsWith('steward/')) return null;
-  const batchId = branch.replace('steward/', '');
+  if (!branch.startsWith('batch-')) return null;
+  const batchId = branch;
   const threadDir = path.join(REPO_DIR, 'threads', batchId);
   if (!fs.existsSync(threadDir)) return null;
   return { branch, batchId, threadDir };
@@ -95,12 +101,15 @@ function cmdIngest(docPaths) {
     process.exit(1);
   }
 
-  // Ensure we're on main
-  const branch = currentBranch();
-  if (branch !== 'main') {
-    console.error(`Must be on main branch (currently on ${branch}).`);
-    console.error('Use "clarify" to continue an active thread, or merge/delete the branch first.');
-    process.exit(1);
+  // When called from bridge server with --batch-id, branch is already created
+  if (!batchIdArg) {
+    // Ensure we're on main (CLI-only mode)
+    const branch = currentBranch();
+    if (branch !== 'main') {
+      console.error(`Must be on main branch (currently on ${branch}).`);
+      console.error('Use "clarify" to continue an active thread, or merge/delete the branch first.');
+      process.exit(1);
+    }
   }
 
   // Resolve absolute paths for the prompt
@@ -120,35 +129,33 @@ function cmdIngest(docPaths) {
   }
 
   console.log('Running steward agent...');
+  const batchName = batchIdArg || 'batch-YYYYMMDD-HHMM';
+  const branchName = batchName;
   const prompt = `Process these documents as a new batch following the batch workflow in copilot-instructions.md:
 
 Documents to ingest:
 ${resolvedPaths.map(p => `- ${p}`).join('\n')}
 
+IMPORTANT: The batch branch and thread directory have already been created by the bridge server.
+- Branch: ${branchName} (you are already on this branch)
+- Thread directory: threads/${batchName}/ (already exists)
+- The source documents have already been copied into the thread directory.
+
+Do NOT create the branch or directory. Do NOT copy the documents. They are already in place.
+
 Steps:
-1. Create a batch branch from main: git checkout -b steward/batch-YYYYMMDD-HHMM
-2. Create the thread directory: threads/<batch-name>/
-3. Copy the documents into the thread directory
-4. Create THREAD.md as an audit log
-5. Read each document, read DB/finbook.json, read kb/knowledge.json
-6. Classify, extract records, check dedup
-7. If no open items: update DB/finbook.json, mark THREAD.md as applied
-8. If open items: write them to THREAD.md, do NOT update DB
-9. If any reusable knowledge is discovered, update kb/knowledge.json
-10. Commit all changes with descriptive messages
+1. Read threads/${batchName}/THREAD.md if it exists
+2. Read each source document in threads/${batchName}/
+3. Read DB/finbook.json and kb/knowledge.json
+4. Classify, extract records, check dedup
+5. If no open items: update DB/finbook.json, create/update THREAD.md as applied
+6. If open items: write them to THREAD.md, do NOT update DB
+7. If any reusable knowledge is discovered, update kb/knowledge.json
+8. Commit all changes with descriptive messages
 
 Evidence-based only. Follow all rules in copilot-instructions.md.`;
 
   callCopilot(prompt);
-
-  // Show thread status if available
-  const active = findActiveThread();
-  if (active) {
-    const threadMdPath = path.join(active.threadDir, 'THREAD.md');
-    if (fs.existsSync(threadMdPath)) {
-      console.log('\n' + fs.readFileSync(threadMdPath, 'utf-8'));
-    }
-  }
 }
 
 function cmdClarify() {
@@ -181,12 +188,6 @@ Follow all rules in copilot-instructions.md.`;
   if (fs.existsSync(sessionUuid)) fs.unlinkSync(sessionUuid);
 
   callCopilot(prompt);
-
-  // Show thread status if available
-  const threadMdPath = path.join(active.threadDir, 'THREAD.md');
-  if (fs.existsSync(threadMdPath)) {
-    console.log('\n' + fs.readFileSync(threadMdPath, 'utf-8'));
-  }
 }
 
 function cmdConfirm() {

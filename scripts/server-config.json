@@ -1,0 +1,10 @@
+{
+  "port": 8080,
+  "repos": [
+    {
+      "id": "finbook-data",
+      "name": "Finbook Data",
+      "path": "../../finbook-data"
+    }
+  ]
+}
