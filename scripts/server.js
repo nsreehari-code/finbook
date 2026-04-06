@@ -201,6 +201,9 @@ function listBatches() {
       // Extract resolved decisions from thread
       const decisions = extractDecisions(threadContent);
 
+      // Extract summary from Status line in Batch Info
+      const summary = extractSummary(threadContent);
+
       // Load chat only for active batches; for confirmed, just return count
       let chat = [];
       let chatCount = 0;
@@ -228,7 +231,8 @@ function listBatches() {
         chat,
         chatCount,
         hasOpenItems,
-        processing
+        processing,
+        summary
       };
     })
     .sort((a, b) => b.id.localeCompare(a.id)); // newest first
@@ -251,6 +255,15 @@ function extractDecisions(threadContent) {
     decisions.push(appliedMatch[1].trim());
   }
   return decisions;
+}
+
+function extractSummary(threadContent) {
+  // Prefer dedicated ## Outcome section (one-liner for UI card)
+  const outcomeMatch = threadContent.match(/## Outcome\n(.+)/i);
+  if (outcomeMatch) return outcomeMatch[1].replace(/^[-*]\s*/, '').trim();
+  // Fallback to **Status**: line in Batch Info
+  const statusMatch = threadContent.match(/\*\*Status\*\*:\s*(.+)/i);
+  return statusMatch ? statusMatch[1].trim() : '';
 }
 
 // ---- Steward integration ----

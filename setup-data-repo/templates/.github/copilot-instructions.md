@@ -157,6 +157,12 @@ Branch: steward/<batch-name>
 
 ## Applied
 <final summary of records added to DB>
+
+## Outcome
+<One-line plain-text summary for the UI card. Examples:>
+- "Added 3 SalaryIncome records for Sarala (Mar, May, Jun 2026)"
+- "Added 5 StockPurchase + 1 Dividend for Hari (MS, Feb–Mar 2025)"
+- "All duplicates — no changes"
 ```
 
 ## Chat Interaction Style

@@ -428,6 +428,12 @@ function renderBatchCard(batch) {
       </div>`;
   }
 
+  // For confirmed batches, show outcome summary from THREAD.md
+  let summaryHtml = '';
+  if (isConfirmed && batch.summary) {
+    summaryHtml = `<div class="batch-summary small text-muted mt-2">${escapeHtml(batch.summary)}</div>`;
+  }
+
   return `
     <div class="col">
       <div class="card h-100${isActive ? ' border-primary' : ''}">
@@ -437,6 +443,7 @@ function renderBatchCard(batch) {
         </div>
         <div class="card-body">
           <div class="batch-files">${filesHtml}</div>
+          ${summaryHtml}
           ${decisionsHtml}
           ${activeHtml}
           ${confirmedChatHtml}
