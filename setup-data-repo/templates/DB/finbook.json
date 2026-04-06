@@ -1,0 +1,18 @@
+{
+  "config": {
+    "CapitalGainsTypes": ["STCG", "LTCG"],
+    "ForeignStockTickers": [],
+    "ForeignCurrencies": ["USD"],
+    "CurrencyRates": { "USD": 85 },
+    "CurrencySymbols": { "USD": "$" },
+    "ForeignIncomeSource": ["Stocks"],
+    "ForeignIncomeType": ["Dividends"],
+    "CapitalGainsQuarters": [
+      { "Name": "Q1", "Start": "04-01", "End": "06-15" },
+      { "Name": "Q2", "Start": "06-16", "End": "09-15" },
+      { "Name": "Q3", "Start": "09-16", "End": "12-15" },
+      { "Name": "Q4", "Start": "12-16", "End": "03-31" }
+    ]
+  },
+  "accounts": []
+}
