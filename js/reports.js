@@ -21,6 +21,26 @@ function getEntryById(formKey, id) {
   return getTable(def.table).find(r => r[def.idField] === id);
 }
 
+/** Render data into a container with FY grouping. dateField is used to derive FY per row. */
+function renderWithFyGrouping(containerId, data, fy, dateField, buildTableFn) {
+  const container = document.getElementById(containerId);
+  const isAllYears = !fy || fy === 'All';
+  if (isAllYears) {
+    const groups = {};
+    data.forEach(r => {
+      const rfy = dateToFY(r[dateField]) || 'Unknown';
+      if (!groups[rfy]) groups[rfy] = [];
+      groups[rfy].push(r);
+    });
+    const sorted = Object.keys(groups).sort().reverse();
+    container.innerHTML = sorted.map(k =>
+      `<h5 class="mt-4 mb-2 fw-bold">FY ${k}</h5>` + buildTableFn(groups[k])
+    ).join('');
+  } else {
+    container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">FY ${fy}</h5>` + buildTableFn(data);
+  }
+}
+
 // ---- Dashboard ----
 // ---- Foreign Income ----
 function renderForeignIncome() {
@@ -28,8 +48,8 @@ function renderForeignIncome() {
   const data = filterByFY(getTable('ForeignIncome'), fy, 'ForeignIncome')
     .sort((a, b) => (a.IncomeDate || '').localeCompare(b.IncomeDate || ''));
 
-  document.querySelector('#foreignIncomeTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('foreignIncomeTableContainer', data, fy, 'IncomeDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.IncomeDate)}</td>
       <td>${r.IncomeSource || ''}</td>
       <td>${r.IncomeType || ''}</td>
@@ -42,11 +62,13 @@ function renderForeignIncome() {
       <td class="num">${fmtR(r.TaxesWithheldINR)}</td>
       <td>${r.NonTaxable ? 'No' : 'Yes'}</td>
       <td>${actionBtns('foreignIncome', r.ForeignIncomeID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('fiTotalAmountINR').textContent = fmtR(data.reduce((s, r) => s + (r.IncomeAmountINR || 0), 0));
-  document.getElementById('fiTotalTaxINR').textContent = fmtR(data.reduce((s, r) => s + (r.TaxesWithheldINR || 0), 0));
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Date</th><th>Source</th><th>Type</th><th>Foreign Account</th><th>Currency</th><th class="text-end">Amount (Cur)</th><th class="text-end">Tax Withheld (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Amount</th><th class="text-end">Tax</th><th>Taxable</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+      <tfoot><tr><td colspan="8"><strong>Total</strong></td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.IncomeAmountINR || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TaxesWithheldINR || 0), 0))}</td><td colspan="2"></td></tr></tfoot>
+    </table>`;
+  });
 }
 
 // ---- Property Income ----
@@ -54,8 +76,8 @@ function renderPropertyIncome() {
   const fy = getSelectedFY();
   const data = filterByFY(getTable('PropertyIncome'), fy, 'PropertyIncome');
 
-  document.querySelector('#propertyIncomeTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('propertyIncomeTableContainer', data, fy, 'IncomeDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.IncomeDate)}</td>
       <td>${r.PropertyID || ''}</td>
       <td class="num">${fmtR(r.GrossIncome)}</td>
@@ -64,13 +86,13 @@ function renderPropertyIncome() {
       <td class="num">${fmtR(r.TDSDeducted)}</td>
       <td>${r.Details || ''}</td>
       <td>${actionBtns('propertyIncome', r.PropertyIncomeID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('piTotalGross').textContent = fmtR(data.reduce((s, r) => s + (r.GrossIncome || 0), 0));
-  document.getElementById('piTotalExpenses').textContent = fmtR(data.reduce((s, r) => s + (r.TotalExpenses || 0), 0));
-  document.getElementById('piTotalNet').textContent = fmtR(data.reduce((s, r) => s + (r.NetIncome || 0), 0));
-  document.getElementById('piTotalTDS').textContent = fmtR(data.reduce((s, r) => s + (r.TDSDeducted || 0), 0));
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Date</th><th>Property</th><th class="text-end">Gross Income</th><th class="text-end">Expenses</th><th class="text-end">Net Income</th><th class="text-end">TDS</th><th>Details</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+      <tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.GrossIncome || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TotalExpenses || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.NetIncome || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TDSDeducted || 0), 0))}</td><td colspan="2"></td></tr></tfoot>
+    </table>`;
+  });
 }
 
 // ---- Capital Gains ----
@@ -78,8 +100,8 @@ function renderCapitalGains() {
   const fy = getSelectedFY();
   const data = filterByFY(getTable('CapitalGainsConsolidated'), fy, 'CapitalGainsConsolidated');
 
-  document.querySelector('#capitalGainsTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('capitalGainsTableContainer', data, fy, 'IncomeDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.IncomeDate)}</td>
       <td>${r.GainsType || ''}</td>
       <td>${r.IncomeDescription || ''}</td>
@@ -91,14 +113,13 @@ function renderCapitalGains() {
       <td>${r.NonTaxable ? 'No' : 'Yes'}</td>
       <td>${r.Remarks || ''}</td>
       <td>${actionBtns('capitalGains', r.CapitalGainsID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('cgTotalSale').textContent = fmtR(data.reduce((s, r) => s + (r.SaleValue || 0), 0));
-  document.getElementById('cgTotalAcq').textContent = fmtR(data.reduce((s, r) => s + (r.AcquisitionCost || 0), 0));
-  document.getElementById('cgTotalExp').textContent = fmtR(data.reduce((s, r) => s + (r.Expenses || 0), 0));
-  document.getElementById('cgTotalGain').textContent = fmtR(data.reduce((s, r) => s + (r.IncomeAmount || 0), 0));
-  document.getElementById('cgTotalTDS').textContent = fmtR(data.reduce((s, r) => s + (r.TDSDeducted || 0), 0));
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Date</th><th>Type</th><th>Description</th><th class="text-end">Sale Value</th><th class="text-end">Acquisition Cost</th><th class="text-end">Expenses</th><th class="text-end">Gain/Loss</th><th class="text-end">TDS</th><th>Taxable</th><th>Remarks</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+      <tfoot><tr><td colspan="3"><strong>Total</strong></td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.SaleValue || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.AcquisitionCost || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.Expenses || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.IncomeAmount || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TDSDeducted || 0), 0))}</td><td colspan="3"></td></tr></tfoot>
+    </table>`;
+  });
 }
 
 // ---- Salary Income ----
@@ -107,8 +128,8 @@ function renderSalaryIncome() {
   const data = filterByFY(getTable('SalaryIncome'), fy, 'SalaryIncome')
     .sort((a, b) => (a.EffectiveDate || '').localeCompare(b.EffectiveDate || ''));
 
-  document.querySelector('#salaryIncomeTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('salaryIncomeTableContainer', data, fy, 'EffectiveDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.EffectiveDate)}</td>
       <td>${r.Employer || ''}</td>
       <td class="num">${fmtR(r.GrossTaxable)}</td>
@@ -120,16 +141,13 @@ function renderSalaryIncome() {
       <td class="num">${fmtR(r.TDSDeducted)}</td>
       <td>${r.Remarks || ''}</td>
       <td>${actionBtns('salaryIncome', r.SalaryIncomeID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('siTotalGross').textContent = fmtR(data.reduce((s, r) => s + (r.GrossTaxable || 0), 0));
-  document.getElementById('siTotalPerq').textContent = fmtR(data.reduce((s, r) => s + (r.TaxablePerquisites || 0), 0));
-  document.getElementById('siTotalExempt').textContent = fmtR(data.reduce((s, r) => s + (r.Exemptions || 0), 0));
-  document.getElementById('siTotalDeduct').textContent = fmtR(data.reduce((s, r) => s + (r.Deductions || 0), 0));
-  document.getElementById('siTotalGrossTaxable').textContent = fmtR(data.reduce((s, r) => s + (r.GrossTaxableIncome || 0), 0));
-  document.getElementById('siTotalNet').textContent = fmtR(data.reduce((s, r) => s + (r.NetTaxableIncome || 0), 0));
-  document.getElementById('siTotalTDS').textContent = fmtR(data.reduce((s, r) => s + (r.TDSDeducted || 0), 0));
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Date</th><th>Employer</th><th class="text-end">Gross Taxable</th><th class="text-end">Perquisites</th><th class="text-end">Exemptions</th><th class="text-end">Gross Taxable Income</th><th class="text-end">Deductions</th><th class="text-end">Net Taxable</th><th class="text-end">TDS</th><th>Remarks</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+      <tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.GrossTaxable || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TaxablePerquisites || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.Exemptions || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.GrossTaxableIncome || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.Deductions || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.NetTaxableIncome || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TDSDeducted || 0), 0))}</td><td colspan="2"></td></tr></tfoot>
+    </table>`;
+  });
 }
 
 // ---- Other Income ----
@@ -137,8 +155,8 @@ function renderOtherIncome() {
   const fy = getSelectedFY();
   const data = filterByFY(getTable('OtherIncome'), fy, 'OtherIncome');
 
-  document.querySelector('#otherIncomeTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('otherIncomeTableContainer', data, fy, 'IncomeDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.IncomeDate)}</td>
       <td>${r.IncomeDescription || ''}</td>
       <td class="num">${fmtR(r.IncomeAmount)}</td>
@@ -146,11 +164,13 @@ function renderOtherIncome() {
       <td>${r.NonTaxable ? 'No' : 'Yes'}</td>
       <td>${r.Remarks || ''}</td>
       <td>${actionBtns('otherIncome', r.OtherIncomeID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('oiTotalAmount').textContent = fmtR(data.reduce((s, r) => s + (r.IncomeAmount || 0), 0));
-  document.getElementById('oiTotalTDS').textContent = fmtR(data.reduce((s, r) => s + (r.TDSDeducted || 0), 0));
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th><th class="text-end">TDS</th><th>Taxable</th><th>Remarks</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+      <tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.IncomeAmount || 0), 0))}</td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TDSDeducted || 0), 0))}</td><td colspan="3"></td></tr></tfoot>
+    </table>`;
+  });
 }
 
 // ---- Stock Purchases ----
@@ -159,8 +179,8 @@ function renderStockPurchases() {
   const data = filterByFY(getTable('StockPurchases'), fy, 'StockPurchases')
     .sort((a, b) => (a.PurchaseDate || '').localeCompare(b.PurchaseDate || ''));
 
-  document.querySelector('#stockPurchasesTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('stockPurchasesTableContainer', data, fy, 'PurchaseDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.PurchaseDate)}</td>
       <td>${r.BrokerageName || ''}</td>
       <td>${r.SecurityName || ''}</td>
@@ -173,8 +193,12 @@ function renderStockPurchases() {
       <td>${r.PurchaseLotID || ''}</td>
       <td>${r.IsSTTPaid ? 'Yes' : 'No'}</td>
       <td>${actionBtns('stockPurchase', r.StockPurchaseID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th><th class="text-end">Price/Unit (Cur)</th><th>Currency</th><th class="text-end">Total Value (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Value</th><th>Lot ID</th><th>STT</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+    </table>`;
+  });
 }
 
 // ---- Stock Sales ----
@@ -190,14 +214,13 @@ function renderStockSales() {
     if (p.CurrencyCode) secCurrencyMap[key] = p.CurrencyCode;
   });
 
-  document.querySelector('#stockSalesTable tbody').innerHTML = data.map(r => {
-    const lotInfo = (r.PurchaseLots || []).map(l =>
-      `${l.SaleQuantity} × ${l.PurchaseLotID || 'Unknown'}`
-    ).join('<br>');
-    const cur = secCurrencyMap[`${r.BrokerageName}|${r.SecurityName}`] || '';
-
-    return `
-      <tr>
+  renderWithFyGrouping('stockSalesTableContainer', data, fy, 'SaleDate', rows => {
+    const tbody = rows.map(r => {
+      const lotInfo = (r.PurchaseLots || []).map(l =>
+        `${l.SaleQuantity} × ${l.PurchaseLotID || 'Unknown'}`
+      ).join('<br>');
+      const cur = secCurrencyMap[`${r.BrokerageName}|${r.SecurityName}`] || '';
+      return `<tr>
         <td>${fmtDate(r.SaleDate)}</td>
         <td>${r.BrokerageName || '—'}</td>
         <td>${r.SecurityName || '—'}</td>
@@ -208,9 +231,13 @@ function renderStockSales() {
         <td class="num">${fmtR(r.TotalSaleValueINR)}</td>
         <td>${lotInfo || '—'}</td>
         <td>${actionBtns('stockSale', r.StockSaleID, r.IsLocked)}</td>
-      </tr>
-    `;
-  }).join('');
+      </tr>`;
+    }).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Sale Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th><th class="text-end">Sale Amount (Cur)</th><th class="text-end">Expenses (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Total Value</th><th>Purchase Lots</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+    </table>`;
+  });
 }
 
 // ---- Advance Tax ----
@@ -218,18 +245,21 @@ function renderAdvanceTax() {
   const fy = getSelectedFY();
   const data = filterByFY(getTable('AdvanceTax'), fy, 'AdvanceTax');
 
-  document.querySelector('#advanceTaxTable tbody').innerHTML = data.map(r => `
-    <tr>
+  renderWithFyGrouping('advanceTaxTableContainer', data, fy, 'EffectiveDate', rows => {
+    const tbody = rows.map(r => `<tr>
       <td>${fmtDate(r.PaymentDate)}</td>
       <td>${fmtDate(r.EffectiveDate)}</td>
       <td class="num">${fmtR(r.TaxAmountPaid)}</td>
       <td>${r.PaymentDescription || ''}</td>
       <td>${r.Remarks || ''}</td>
       <td>${actionBtns('advanceTax', r.AdvanceTaxID, r.IsLocked)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('atTotalAmount').textContent = fmtR(data.reduce((s, r) => s + (r.TaxAmountPaid || 0), 0));
+    </tr>`).join('');
+    return `<table class="table table-sm table-hover align-middle">
+      <thead><tr><th>Paid Date</th><th>Effective Date</th><th class="text-end">Amount</th><th>Description</th><th>Remarks</th><th>Actions</th></tr></thead>
+      <tbody>${tbody}</tbody>
+      <tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num">${fmtR(rows.reduce((s, r) => s + (r.TaxAmountPaid || 0), 0))}</td><td colspan="3"></td></tr></tfoot>
+    </table>`;
+  });
 }
 
 // ---- Settings ----

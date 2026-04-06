@@ -28,7 +28,7 @@
       <label class="text-white-50 small d-flex align-items-center gap-1">FY
         <select id="fyFilter" class="form-select form-select-sm header-select"></select>
       </label>
-      <button id="resetBtn" class="btn btn-sm btn-header-secondary d-none" title="Reset"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/></svg> Reset</button>
+      <button id="resetBtn" class="btn btn-sm btn-header-secondary d-none" title="Reset to load screen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/></svg> Reset</button>
       <button id="saveDataBtn" class="btn btn-sm btn-header-primary d-none" title="Save">
         <span id="dirtyIndicator" class="dirty-dot d-none"></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save
       </button>
@@ -254,25 +254,7 @@
           <h2 class="fw-bold mb-0">Foreign Income</h2>
           <button class="btn btn-primary btn-sm" id="addForeignIncome">+ Add Entry</button>
         </div>
-        <div class="table-responsive">
-          <table id="foreignIncomeTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th><th>Source</th><th>Type</th><th>Foreign Account</th><th>Currency</th>
-                <th class="text-end">Amount (Cur)</th><th class="text-end">Tax Withheld (Cur)</th><th class="text-end">Rate (INR)</th>
-                <th class="text-end">Amount</th><th class="text-end">Tax</th><th>Taxable</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="8"><strong>Total</strong></td>
-                <td class="num" id="fiTotalAmountINR"></td>
-                <td class="num" id="fiTotalTaxINR"></td>
-                <td colspan="2"></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div id="foreignIncomeTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -282,23 +264,7 @@
           <h2 class="fw-bold mb-0">Property Income</h2>
           <button class="btn btn-primary btn-sm" id="addPropertyIncome">+ Add Entry</button>
         </div>
-        <div class="table-responsive">
-          <table id="propertyIncomeTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th><th>Property</th><th class="text-end">Gross Income</th><th class="text-end">Expenses</th>
-                <th class="text-end">Net Income</th><th class="text-end">TDS</th><th>Details</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="2"><strong>Total</strong></td>
-                <td class="num" id="piTotalGross"></td><td class="num" id="piTotalExpenses"></td>
-                <td class="num" id="piTotalNet"></td><td class="num" id="piTotalTDS"></td><td colspan="2"></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div id="propertyIncomeTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -308,24 +274,7 @@
           <h2 class="fw-bold mb-0">Capital Gains (Consolidated)</h2>
           <button class="btn btn-primary btn-sm" id="addCapitalGains">+ Add Entry</button>
         </div>
-        <div class="table-responsive">
-          <table id="capitalGainsTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th><th>Type</th><th>Description</th><th class="text-end">Sale Value</th>
-                <th class="text-end">Acquisition Cost</th><th class="text-end">Expenses</th><th class="text-end">Gain/Loss</th>
-                <th class="text-end">TDS</th><th>Taxable</th><th>Remarks</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3"><strong>Total</strong></td>
-                <td class="num" id="cgTotalSale"></td><td class="num" id="cgTotalAcq"></td><td class="num" id="cgTotalExp"></td>
-                <td class="num" id="cgTotalGain"></td><td class="num" id="cgTotalTDS"></td><td colspan="3"></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div id="capitalGainsTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -335,20 +284,7 @@
           <h2 class="fw-bold mb-0">Salary Income</h2>
           <button class="btn btn-primary btn-sm" id="addSalaryIncome">+ Add Entry</button>
         </div>
-        <div class="table-responsive">
-          <table id="salaryIncomeTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr><th>Date</th><th>Employer</th><th class="text-end">Gross Taxable</th><th class="text-end">Perquisites</th><th class="text-end">Exemptions</th><th class="text-end">Gross Taxable Income</th><th class="text-end">Deductions</th><th class="text-end">Net Taxable</th><th class="text-end">TDS</th><th>Remarks</th><th>Actions</th></tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="2"><strong>Total</strong></td>
-                <td class="num" id="siTotalGross"></td><td class="num" id="siTotalPerq"></td><td class="num" id="siTotalExempt"></td>
-                <td class="num" id="siTotalGrossTaxable"></td><td class="num" id="siTotalDeduct"></td><td class="num" id="siTotalNet"></td><td class="num" id="siTotalTDS"></td><td colspan="2"></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div id="salaryIncomeTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -358,19 +294,7 @@
           <h2 class="fw-bold mb-0">Other Income</h2>
           <button class="btn btn-primary btn-sm" id="addOtherIncome">+ Add Entry</button>
         </div>
-        <div class="table-responsive">
-          <table id="otherIncomeTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr><th>Date</th><th>Description</th><th class="text-end">Amount</th><th class="text-end">TDS</th><th>Taxable</th><th>Remarks</th><th>Actions</th></tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="2"><strong>Total</strong></td>
-                <td class="num" id="oiTotalAmount"></td><td class="num" id="oiTotalTDS"></td><td colspan="3"></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div id="otherIncomeTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -380,17 +304,7 @@
           <h2 class="fw-bold mb-0">Stock Purchases</h2>
           <button class="btn btn-primary btn-sm" id="addStockPurchase">+ Add Purchase</button>
         </div>
-        <div class="table-responsive">
-          <table id="stockPurchasesTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th>
-                <th class="text-end">Price/Unit (Cur)</th><th>Currency</th><th class="text-end">Total Value (Cur)</th>
-                <th class="text-end">Rate (INR)</th><th class="text-end">Value</th><th>Lot ID</th><th>STT</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <div id="stockPurchasesTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -400,17 +314,7 @@
           <h2 class="fw-bold mb-0">Stock Sales</h2>
           <button class="btn btn-primary btn-sm" id="addStockSale">+ Add Sale</button>
         </div>
-        <div class="table-responsive">
-          <table id="stockSalesTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Sale Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th>
-                <th class="text-end">Sale Amount (Cur)</th><th class="text-end">Expenses (Cur)</th><th class="text-end">Rate (INR)</th>
-                <th class="text-end">Total Value</th><th>Purchase Lots</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <div id="stockSalesTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -420,22 +324,7 @@
           <h2 class="fw-bold mb-0">Advance Tax Payments</h2>
           <button class="btn btn-primary btn-sm" id="addAdvanceTax">+ Add Payment</button>
         </div>
-        <div class="table-responsive">
-          <table id="advanceTaxTable" class="table table-sm table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Paid Date</th><th>Effective Date</th><th class="text-end">Amount</th>
-                <th>Description</th><th>Remarks</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="2"><strong>Total</strong></td>
-                <td class="num" id="atTotalAmount"></td><td colspan="3"></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div id="advanceTaxTableContainer" class="table-responsive">
         </div>
       </section>
 

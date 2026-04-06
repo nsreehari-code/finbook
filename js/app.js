@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const sectionId = btn.dataset.section;
       document.getElementById(sectionId).classList.add('active');
       currentSection = sectionId;
+      updateHash();
       renderCurrentSection();
       closeMobileNav();
     });
@@ -58,11 +59,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('fyFilter').addEventListener('change', () => {
     const asOn = document.getElementById('sbAsOnDate');
     if (asOn) asOn.value = '';
+    updateHash();
     renderCurrentSection();
   });
   document.getElementById('accountFilter').addEventListener('change', () => {
     selectedAccount = document.getElementById('accountFilter').value;
     populateFYFilter();
+    restoreHashFY();
+    updateHash();
     renderCurrentSection();
   });
 
@@ -102,6 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Header Reset button
   document.getElementById('resetBtn').addEventListener('click', () => {
+    if (isDirty && !confirm('There are unsaved changes. Are you sure you want to reset?')) return;
     clearStorage();
     isDirty = false;
     dataLoaded = false;
@@ -119,6 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target.files[0]) {
       loadDataFromFile(e.target.files[0]).then(() => {
         populateFilters();
+        restoreFromHash();
         renderCurrentSection();
         hideLoadScreen();
       });
@@ -139,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         selectedAccount = DB.accounts.length > 0 ? DB.accounts[0].account : null;
         updateDataButtons();
         populateFilters();
+        restoreFromHash();
         renderCurrentSection();
         hideLoadScreen();
       })
@@ -154,6 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectedAccount = DB.accounts.length > 0 ? DB.accounts[0].account : null;
     updateDataButtons();
     populateFilters();
+    restoreFromHash();
     renderCurrentSection();
 
     // Handle ?export URL params
@@ -242,4 +250,49 @@ function populateFYFilter() {
   fySelect.innerHTML = '<option value="All">All Years</option>' +
     years.map(y => `<option value="${y}">${y}</option>`).join('');
   if (years.length > 0) fySelect.value = years[0];
+}
+
+function updateHash() {
+  const acc = document.getElementById('accountFilter').value || '';
+  const fy = document.getElementById('fyFilter').value || '';
+  location.hash = `${currentSection}/${encodeURIComponent(acc)}/${encodeURIComponent(fy)}`;
+}
+
+function restoreFromHash() {
+  const parts = location.hash.replace('#', '').split('/').map(decodeURIComponent);
+  const [section, account, fy] = parts;
+
+  if (section) {
+    const targetBtn = document.querySelector(`.nav-btn[data-section="${section}"]`);
+    if (targetBtn) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      targetBtn.classList.add('active');
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(section).classList.add('active');
+      currentSection = section;
+    }
+  }
+
+  if (account) {
+    const accSelect = document.getElementById('accountFilter');
+    const match = [...accSelect.options].find(o => o.value === account);
+    if (match) {
+      accSelect.value = account;
+      selectedAccount = account;
+    }
+  }
+
+  populateFYFilter();
+
+  if (fy) restoreHashFY();
+}
+
+function restoreHashFY() {
+  const parts = location.hash.replace('#', '').split('/').map(decodeURIComponent);
+  const fy = parts[2];
+  if (fy) {
+    const fySelect = document.getElementById('fyFilter');
+    const match = [...fySelect.options].find(o => o.value === fy);
+    if (match) fySelect.value = fy;
+  }
 }

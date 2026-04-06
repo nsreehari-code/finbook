@@ -33,12 +33,11 @@ function updateDataButtons() {
   if (isDirty) {
     if (saveBtn) saveBtn.classList.remove('d-none');
     if (dirtyDot) dirtyDot.classList.remove('d-none');
-    if (resetBtn) resetBtn.classList.add('d-none');
   } else {
     if (saveBtn) saveBtn.classList.add('d-none');
     if (dirtyDot) dirtyDot.classList.add('d-none');
-    if (resetBtn) resetBtn.classList.toggle('d-none', !dataLoaded);
   }
+  if (resetBtn) resetBtn.classList.toggle('d-none', !dataLoaded);
   if (exportBtn) exportBtn.classList.toggle('d-none', !dataLoaded);
 }
 
