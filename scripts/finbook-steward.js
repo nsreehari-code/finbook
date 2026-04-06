@@ -160,7 +160,7 @@ function cmdClarify() {
 
   console.log(`Resuming thread: ${active.batchId}`);
 
-  const prompt = `The user has updated the "User Response" section of threads/${active.batchId}/THREAD.md.
+  const prompt = `The user has updated threads/${active.batchId}/THREAD.md with their response to open items.
 
 Read the THREAD.md to see:
 1. The current open items
@@ -170,7 +170,7 @@ Then:
 1. Map the user's response to open items
 2. Resolve what you can
 3. If any response contains reusable knowledge, update kb/knowledge.json
-4. If all open items are resolved: update DB/finbook.json with the records and update THREAD.md
+4. If all open items are resolved: update DB/finbook.json with the records and update THREAD.md — clear open items
 5. If open items remain: update THREAD.md with remaining items
 6. Commit all changes with descriptive messages
 
@@ -199,16 +199,22 @@ function cmdConfirm() {
   // Check for unresolved open items
   const threadMdPath = path.join(active.threadDir, 'THREAD.md');
   if (fs.existsSync(threadMdPath)) {
-    const content = fs.readFileSync(threadMdPath, 'utf-8');
-    const openMatch = content.match(/## Open Items\n([\s\S]*?)(?=\n## )/);
-    if (openMatch) {
-      const openText = openMatch[1].trim();
-      const hasUnresolved = openText && !openText.match(/^(_?none|_?n\/a|_?no open items)/i);
-      if (hasUnresolved) {
-        console.error('Cannot confirm — there are unresolved open items:');
-        console.error(openText);
-        console.error('\nUse "clarify" to resolve them first.');
-        process.exit(1);
+    const content = fs.readFileSync(threadMdPath, 'utf-8').toLowerCase();
+    // Look for any open item markers that aren't resolved
+    const hasOpenSection = content.includes('## open items') || content.includes('## open questions');
+    if (hasOpenSection) {
+      // Check if section contains actual unresolved items (not just "none" or empty)
+      const openMatch = content.match(/## open (items|questions)\n([\s\S]*?)(?=\n## |$)/);
+      if (openMatch) {
+        const openText = openMatch[2].trim();
+        const isEmpty = !openText
+          || openText.match(/^[_*]*(none|n\/a|no open|all resolved|no unresolved)[_*]*/i)
+          || openText === '-' || openText === '';
+        if (!isEmpty) {
+          console.error('Cannot confirm — THREAD.md has unresolved open items.');
+          console.error('Use "clarify" to resolve them first, or edit THREAD.md to clear them.');
+          process.exit(1);
+        }
       }
     }
   }
@@ -235,38 +241,20 @@ Follow the batch workflow in copilot-instructions.md.`;
 }
 
 function cmdStatus() {
-  const threadsDir = path.join(REPO_DIR, 'threads');
-  if (!fs.existsSync(threadsDir)) {
-    console.log('No threads directory.');
-    return;
-  }
+  const prompt = `Report the current status of the finbook-data repository:
 
-  const branch = currentBranch();
-  console.log(`Current branch: ${branch}`);
+1. What branch are we on?
+2. Is there an active steward batch? If so, what's the batch name?
+3. If there's an active batch, read its THREAD.md and summarize: what documents were processed, what records were added or proposed, are there any open items?
+4. List all completed threads in the threads/ directory.
 
-  const active = findActiveThread();
-  if (active) {
-    console.log(`\nActive thread: ${active.batchId}`);
-    const threadMd = path.join(active.threadDir, 'THREAD.md');
-    if (fs.existsSync(threadMd)) {
-      const content = fs.readFileSync(threadMd, 'utf-8');
-      // Show just the key sections
-      const openMatch = content.match(/## Open Items\n([\s\S]*?)(?=\n## )/);
-      const appliedMatch = content.match(/## Applied\n([\s\S]*?)$/);
-      if (openMatch) console.log(`\nOpen Items:\n${openMatch[1].trim()}`);
-      if (appliedMatch) console.log(`\nApplied:\n${appliedMatch[1].trim()}`);
-    }
-  } else {
-    console.log('No active thread.');
-  }
+Be concise.`;
 
-  // List completed threads on main
-  const threads = fs.readdirSync(threadsDir).filter(d =>
-    fs.statSync(path.join(threadsDir, d)).isDirectory()
-  );
-  if (threads.length > 0) {
-    console.log(`\nAll threads: ${threads.join(', ')}`);
-  }
+  // Clear session for fresh context
+  const sessionUuid = path.join(TEMP_DIR, 'session', 'session.uuid');
+  if (fs.existsSync(sessionUuid)) fs.unlinkSync(sessionUuid);
+
+  callCopilot(prompt);
 }
 
 // ---- Main ----
