@@ -8,7 +8,7 @@ let DB = { accounts: [], config: {} };
 const TABLE_NAMES = [
   'AdvanceTax', 'CapitalGainsConsolidated', 'ForeignAccounts',
   'ForeignIncome', 'OtherIncome', 'Properties', 'PropertyIncome',
-  'SalaryIncome', 'StockPurchases', 'StockSales'
+  'SalaryIncome', 'StockInflowsPlusAcquisitions', 'StockOutflowsPlusSales'
 ];
 
 let isDirty = false;
@@ -44,7 +44,7 @@ function updateDataButtons() {
 // ---- localStorage persistence ----
 
 const STORAGE_KEY = 'taxtracker_db';
-const SCHEMA_VERSION = 9; // bump when schema changes
+const SCHEMA_VERSION = 10; // bump when schema changes
 
 function hasStoredData() {
   if (localStorage.getItem('taxtracker_schema') !== String(SCHEMA_VERSION)) {
@@ -277,7 +277,7 @@ const COMPUTATIONS = {
     r.OtherIncomeID = String(i);
     r.QFY = dateToQFY(r.IncomeDate);
   },
-  StockPurchases: (r, i) => {
+  StockInflowsPlusAcquisitions: (r, i) => {
     r.StockPurchaseID = String(i);
     const qty = r.PurchaseQuantity || 0;
     r.TotalPurchaseValue = qty * (r.PurchasePricePerUnit || 0) + (r.PurchaseExpenses || 0);
@@ -285,7 +285,7 @@ const COMPUTATIONS = {
     r.TotalPurchaseValueINR = r.TotalPurchaseValue * (r.ExchangeRateToINR || 0);
     r.QFY = dateToQFY(r.PurchaseDate);
   },
-  StockSales: (r, i) => {
+  StockOutflowsPlusSales: (r, i) => {
     r.StockSaleID = String(i);
     const qty = r.SaleQuantity || 0;
     r.TotalSaleValue = (r.SaleAmount || 0) - (r.SaleExpenses || 0);
@@ -313,8 +313,8 @@ const COMPUTED_FIELDS = {
   PropertyIncome: ['PropertyIncomeID', 'NetIncome', 'QFY'],
   CapitalGainsConsolidated: ['CapitalGainsID', 'IncomeAmount', 'QFY', 'CgQ'],
   OtherIncome: ['OtherIncomeID', 'QFY'],
-  StockPurchases: ['StockPurchaseID', 'TotalPurchaseValue', 'TotalPurchasePricePerUnit', 'TotalPurchaseValueINR', 'QFY'],
-  StockSales: ['StockSaleID', 'TotalSaleValue', 'TotalSalePricePerUnit', 'TotalSaleValueINR', 'QFY', 'CgQ'],
+  StockInflowsPlusAcquisitions: ['StockPurchaseID', 'TotalPurchaseValue', 'TotalPurchasePricePerUnit', 'TotalPurchaseValueINR', 'QFY'],
+  StockOutflowsPlusSales: ['StockSaleID', 'TotalSaleValue', 'TotalSalePricePerUnit', 'TotalSaleValueINR', 'QFY', 'CgQ'],
   SalaryIncome: ['SalaryIncomeID', 'GrossTaxableIncome', 'NetTaxableIncome', 'QFY'],
   AdvanceTax: ['AdvanceTaxID', 'QFY', 'CgQ']
 };
@@ -328,8 +328,8 @@ const DATE_FIELDS = {
   OtherIncome: 'IncomeDate',
   PropertyIncome: 'IncomeDate',
   SalaryIncome: 'EffectiveDate',
-  StockPurchases: 'PurchaseDate',
-  StockSales: 'SaleDate'
+  StockInflowsPlusAcquisitions: 'PurchaseDate',
+  StockOutflowsPlusSales: 'SaleDate'
 };
 
 function dateToFY(dateStr) {
@@ -375,7 +375,7 @@ function derivePurchaseLotID(data) {
 }
 
 function nextLotTag(data) {
-  const purchases = getTable('StockPurchases');
+  const purchases = getTable('StockInflowsPlusAcquisitions');
   const d = data.PurchaseDate ? new Date(data.PurchaseDate) : null;
   if (!d) return 0;
   const matches = purchases.filter(p => {

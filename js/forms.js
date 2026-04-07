@@ -83,7 +83,7 @@ const FORM_DEFS = {
 
   stockPurchase: {
     title: 'Stock Purchase',
-    table: 'StockPurchases',
+    table: 'StockInflowsPlusAcquisitions',
     idField: 'StockPurchaseID',
     fields: [
       { name: 'PurchaseDate', label: 'Date', type: 'date', required: true },
@@ -105,7 +105,7 @@ const FORM_DEFS = {
 
   stockSale: {
     title: 'Stock Sale',
-    table: 'StockSales',
+    table: 'StockOutflowsPlusSales',
     idField: 'StockSaleID',
     fields: [
       { name: 'SaleDate', label: 'Sale Date', type: 'date', required: true },
@@ -360,14 +360,14 @@ function openModal(formKey, existingData) {
     fieldsEl.appendChild(subform);
 
     // Populate brokerage dropdown
-    const brokerages = [...new Set(getTable('StockPurchases').map(p => p.BrokerageName).filter(Boolean))].sort();
+    const brokerages = [...new Set(getTable('StockInflowsPlusAcquisitions').map(p => p.BrokerageName).filter(Boolean))].sort();
     const brokEl = document.getElementById('field_BrokerageName');
     brokEl.innerHTML = '<option value="">— Select —</option>' + brokerages.map(b => `<option>${b}</option>`).join('');
     if (existingData && existingData.BrokerageName) brokEl.value = existingData.BrokerageName;
 
     function populateSecurities() {
       const brokerage = brokEl.value;
-      const purchases = getTable('StockPurchases');
+      const purchases = getTable('StockInflowsPlusAcquisitions');
       const filtered = brokerage ? purchases.filter(p => p.BrokerageName === brokerage) : purchases;
       const securities = [...new Set(filtered.map(p => p.SecurityName).filter(Boolean))].sort();
       const secEl = document.getElementById('field_SecurityName');
@@ -377,7 +377,7 @@ function openModal(formKey, existingData) {
 
     // Compute already-sold qty per lot (excluding current sale if editing)
     const editId = existingData ? existingData[def.idField] : null;
-    const allSales = getTable('StockSales');
+    const allSales = getTable('StockOutflowsPlusSales');
     const soldMap = {}; // lotID -> total sold elsewhere
     allSales.forEach(sale => {
       if (editId != null && sale[def.idField] === editId) return; // skip self
@@ -389,7 +389,7 @@ function openModal(formKey, existingData) {
     function refreshLots() {
       const brokerage = brokEl.value;
       const security = document.getElementById('field_SecurityName').value;
-      const purchases = getTable('StockPurchases').filter(p =>
+      const purchases = getTable('StockInflowsPlusAcquisitions').filter(p =>
         (!brokerage || p.BrokerageName === brokerage) &&
         (!security || p.SecurityName === security)
       );
@@ -430,7 +430,7 @@ function openModal(formKey, existingData) {
       const brokerage = brokEl.value;
       const security = document.getElementById('field_SecurityName').value;
       if (!brokerage || !security) return;
-      const purchase = getTable('StockPurchases').find(p => p.BrokerageName === brokerage && p.SecurityName === security);
+      const purchase = getTable('StockInflowsPlusAcquisitions').find(p => p.BrokerageName === brokerage && p.SecurityName === security);
       if (!purchase || !purchase.CurrencyCode) return;
       const rates = (DB.config && DB.config.CurrencyRates) || {};
       const rate = rates[purchase.CurrencyCode];

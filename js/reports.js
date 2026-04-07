@@ -176,7 +176,7 @@ function renderOtherIncome() {
 // ---- Stock Purchases ----
 function renderStockPurchases() {
   const fy = getSelectedFY();
-  const data = filterByFY(getTable('StockPurchases'), fy, 'StockPurchases')
+  const data = filterByFY(getTable('StockInflowsPlusAcquisitions'), fy, 'StockInflowsPlusAcquisitions')
     .sort((a, b) => (a.PurchaseDate || '').localeCompare(b.PurchaseDate || ''));
 
   renderWithFyGrouping('stockPurchasesTableContainer', data, fy, 'PurchaseDate', rows => {
@@ -204,12 +204,12 @@ function renderStockPurchases() {
 // ---- Stock Sales ----
 function renderStockSales() {
   const fy = getSelectedFY();
-  const data = filterByFY(getTable('StockSales'), fy, 'StockSales')
+  const data = filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales')
     .sort((a, b) => (a.SaleDate || '').localeCompare(b.SaleDate || ''));
 
   // Build currency map from purchases
   const secCurrencyMap = {};
-  getTable('StockPurchases').forEach(p => {
+  getTable('StockInflowsPlusAcquisitions').forEach(p => {
     const key = `${p.BrokerageName}|${p.SecurityName}`;
     if (p.CurrencyCode) secCurrencyMap[key] = p.CurrencyCode;
   });
@@ -495,10 +495,10 @@ function renderAllIncome() {
 
   // Capital Gains from Stock Sales
   const lotMap = {};
-  getTable('StockPurchases').forEach(p => {
+  getTable('StockInflowsPlusAcquisitions').forEach(p => {
     if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p;
   });
-  filterByFY(getTable('StockSales'), fy, 'StockSales').forEach(s => {
+  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
     lots.forEach(l => {
@@ -731,8 +731,8 @@ function renderStockBook() {
   const asOn = new Date(asOnInput.value + 'T23:59:59');
 
   // Build merged transaction rows from purchases and sales
-  const purchases = getTable('StockPurchases');
-  const sales = getTable('StockSales');
+  const purchases = getTable('StockInflowsPlusAcquisitions');
+  const sales = getTable('StockOutflowsPlusSales');
 
   // Populate security filter options
   const allSecurities = [...new Set(purchases.map(p => p.SecurityName).filter(Boolean))].sort();
@@ -986,12 +986,12 @@ function renderCapitalGainsView() {
 
   // Build purchase lot lookup: PurchaseLotID -> purchase record
   const lotMap = {};
-  getTable('StockPurchases').forEach(p => {
+  getTable('StockInflowsPlusAcquisitions').forEach(p => {
     if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p;
   });
 
   // Stock Sales → Capital Gains rows
-  filterByFY(getTable('StockSales'), fy, 'StockSales').forEach(s => {
+  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
     let earliestPurchaseDate = null;
@@ -1171,7 +1171,7 @@ function buildExportData() {
   // ---- All Income unified rows ----
   const incomeRows = [];
   const lotMap = {};
-  getTable('StockPurchases').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
+  getTable('StockInflowsPlusAcquisitions').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
 
   filterByFY(getTable('ForeignIncome'), fy, 'ForeignIncome').forEach(r => {
     incomeRows.push({ date: r.IncomeDate, category: 'Foreign', description: `${r.IncomeSource || ''} — ${r.IncomeType || ''}`, amount: r.IncomeAmountINR || 0, relief: r.TaxesWithheldINR || 0, tds: 0, quarter: r.QFY || '' });
@@ -1182,7 +1182,7 @@ function buildExportData() {
   filterByFY(getTable('CapitalGainsConsolidated'), fy, 'CapitalGainsConsolidated').forEach(r => {
     incomeRows.push({ date: r.IncomeDate, category: 'Capital Gains', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '' });
   });
-  filterByFY(getTable('StockSales'), fy, 'StockSales').forEach(s => {
+  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
     if (fy && fy !== 'All' && dateToFY(s.SaleDate) !== fy) return;
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
@@ -1215,7 +1215,7 @@ function buildExportData() {
 
   // ---- Capital Gains detail ----
   const cgRows = [];
-  filterByFY(getTable('StockSales'), fy, 'StockSales').forEach(s => {
+  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0, earliestPurchaseDate = null;
     lots.forEach(l => {
@@ -1241,8 +1241,8 @@ function buildExportData() {
   const stcgTotal = cgRows.filter(r => r.holdingType === 'STCG').reduce((s, r) => s + r.gainLoss, 0);
 
   // ---- Stock Book holdings as-on ----
-  const purchases = getTable('StockPurchases');
-  const sales = getTable('StockSales');
+  const purchases = getTable('StockInflowsPlusAcquisitions');
+  const sales = getTable('StockOutflowsPlusSales');
   const asOn = new Date(asOnDate + 'T23:59:59');
   const soldPerLot = {};
   sales.forEach(s => {
