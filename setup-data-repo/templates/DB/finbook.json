@@ -8,10 +8,17 @@
     "ForeignIncomeSource": ["Stocks"],
     "ForeignIncomeType": ["Dividends"],
     "CapitalGainsQuarters": [
-      { "Name": "Q1", "Start": "04-01", "End": "06-15" },
-      { "Name": "Q2", "Start": "06-16", "End": "09-15" },
-      { "Name": "Q3", "Start": "09-16", "End": "12-15" },
-      { "Name": "Q4", "Start": "12-16", "End": "03-31" }
+      { "quarter": "cgQ1", "from": "01-Apr", "to": "15-Jun" },
+      { "quarter": "cgQ2", "from": "16-Jun", "to": "15-Sep" },
+      { "quarter": "cgQ3", "from": "16-Sep", "to": "15-Dec" },
+      { "quarter": "cgQ4", "from": "16-Dec", "to": "15-Mar" },
+      { "quarter": "cgQ4a", "from": "16-Mar", "to": "31-Mar" }
+    ],
+    "FYQuarters": [
+      { "quarter": "Q1", "from": "01-Apr", "to": "30-Jun" },
+      { "quarter": "Q2", "from": "01-Jul", "to": "30-Sep" },
+      { "quarter": "Q3", "from": "01-Oct", "to": "31-Dec" },
+      { "quarter": "Q4", "from": "01-Jan", "to": "31-Mar" }
     ]
   },
   "accounts": []
