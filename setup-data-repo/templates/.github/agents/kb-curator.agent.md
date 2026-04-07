@@ -47,21 +47,25 @@ How to interpret source-specific terminology:
 
 ## Workflow
 
-1. **Read** `kb/knowledge.json`
-2. **Check** if the new knowledge already exists (avoid duplicates)
-3. **Add** new entries with source attribution and date
-4. **Write** updated `kb/knowledge.json`
+You are invoked at the end of a batch, after all records are applied and open items resolved.
+
+1. **Review the chat history in batch chats/ and THREAD.md** in the current thread directory to identify any new entities, document patterns, processing decisions, or field mappings discovered during this batch
+2. **Read** `kb/knowledge.json`
+3. **Check** if each candidate already exists (avoid duplicates)
+4. **Add** genuinely new entries with date
+5. **Write** updated `kb/knowledge.json`
+6. If nothing new was learned, do nothing — not every batch produces KB-worthy knowledge
 
 ## Entry Format
 
 ### Entity
 ```json
-{"name": "<identifier>", "account": "<account_code>", "type": "<name|pan|employer>", "source": "<document or user>", "date": "<YYYY-MM-DD>"}
+{"name": "<identifier>", "account": "<account_code>", "type": "<name|pan|employer>", "date": "<YYYY-MM-DD>"}
 ```
 
 ### Decision / Pattern
 ```json
-{"rule": "<the rule or pattern>", "category": "<source-pattern|processing-rule|field-mapping>", "source": "<user clarification|document observation>", "date": "<YYYY-MM-DD>", "context": "<brief context>"}
+{"rule": "<the rule or pattern>", "category": "<source-pattern|processing-rule|field-mapping>", "date": "<YYYY-MM-DD>", "context": "<brief semantic context — describe the general pattern, never a specific instance>"}
 ```
 
 ## Constraints
@@ -70,3 +74,4 @@ How to interpret source-specific terminology:
 - DO NOT duplicate existing entries
 - DO NOT add transaction-level data that belongs in DB
 - ONLY add knowledge that helps process future batches better
+- The `context` field MUST be **semantic, not episodic** — describe the general pattern or rationale, never a specific instance. Bad: "79 MSFT shares transferred from MS to Schwab on 12/24/2024 for Hari". Good: "Applies to inter-brokerage share transfers and withdrawals"
