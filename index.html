@@ -89,9 +89,13 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Capital Gains
           </button>
-          <button class="nav-btn" data-section="stockBook">
+          <button class="nav-btn" data-section="stockHoldings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-            Stock Book
+            Stock Holdings
+          </button>
+          <button class="nav-btn" data-section="stockTransactions">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Stock Transactions
           </button>
         </div>
         <hr class="nav-divider">
@@ -236,30 +240,38 @@
         </div>
       </section>
 
-      <!-- ===== STOCK BOOK ===== -->
-      <section id="stockBook" class="section">
-        <h2 class="fw-bold mb-3">Stock Book</h2>
+      <!-- ===== STOCK HOLDINGS ===== -->
+      <section id="stockHoldings" class="section">
+        <h2 class="fw-bold mb-3">Stock Holdings</h2>
         <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
           <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Security
-            <select id="sbSecurityFilter" class="form-select form-select-sm w-auto">
+            <select id="shSecurityFilter" class="form-select form-select-sm w-auto">
               <option value="">All</option>
             </select>
           </label>
           <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">As On
-            <input type="date" id="sbAsOnDate" class="form-control form-control-sm w-auto">
+            <input type="date" id="shAsOnDate" class="form-control form-control-sm w-auto">
           </label>
-          <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="sbView" id="sbViewSum" value="summary" autocomplete="off" checked>
-            <label class="btn btn-outline-primary" for="sbViewSum">Holdings</label>
-            <input type="radio" class="btn-check" name="sbView" id="sbViewDet" value="detailed" autocomplete="off">
-            <label class="btn btn-outline-primary" for="sbViewDet">Transactions</label>
-          </div>
-          <label id="sbLotsToggle" class="d-flex align-items-center gap-1 text-secondary small fw-medium">
-            <input type="checkbox" id="sbShowLots" class="form-check-input"> View Lots
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">
+            <input type="checkbox" id="shShowLots" class="form-check-input"> View Lots
           </label>
         </div>
-        <div id="sbTotalHoldings" class="d-none mb-3"></div>
-        <div id="sbTableContainer" class="table-responsive">
+        <div id="shTotalHoldings" class="d-none mb-3"></div>
+        <div id="shTableContainer" class="table-responsive">
+        </div>
+      </section>
+
+      <!-- ===== STOCK TRANSACTIONS ===== -->
+      <section id="stockTransactions" class="section">
+        <h2 class="fw-bold mb-3">Stock Transactions</h2>
+        <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+          <label class="d-flex align-items-center gap-1 text-secondary small fw-medium">Security
+            <select id="stSecurityFilter" class="form-select form-select-sm w-auto">
+              <option value="">All</option>
+            </select>
+          </label>
+        </div>
+        <div id="stTableContainer" class="table-responsive">
         </div>
       </section>
 
@@ -422,7 +434,8 @@
             <ul>
               <li><strong>Income Summary</strong> — totals by category (Salary, Foreign, Property, Capital Gains, etc.) with total taxable income, tax relief, and TDS.</li>
               <li><strong>Capital Gains</strong> — each transaction with lot-matched acquisition cost, holding period, LTCG/STCG classification, and gain/loss.</li>
-              <li><strong>Stock Book</strong> — holdings as-on date with lot-level breakdown, average cost, and total portfolio value.</li>
+              <li><strong>Stock Holdings</strong> — holdings as-on date with lot-level breakdown, average cost, and total portfolio value.</li>
+              <li><strong>Stock Transactions</strong> — buy/sell transaction log with FY filtering and grouping, running balance per security.</li>
               <li><strong>All Income Rows</strong> — unified view of every income entry across all tables.</li>
               <li><strong>Computed Records</strong> — every table's records with all computed fields included.</li>
             </ul>

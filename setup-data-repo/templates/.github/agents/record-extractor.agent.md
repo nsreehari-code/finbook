@@ -40,14 +40,14 @@ You are the Finbook Record Extractor. Your job is to extract financial records f
 - Computed (NEVER include): OtherIncomeID, QFY
 - Dedup key: IncomeDate + IncomeDescription + IncomeAmount
 
-### StockInflowsPlusAcquisitions
+### StockPurchasesOrTransferIns
 Records purchases, RSU vests, and transfer-ins (shares arriving from another brokerage). A record MUST be created for every inflow event — including transfers.
 - Fields: PurchaseDate (date, required), BrokerageName (text), SecurityName (text, required), CurrencyCode (text, required), PurchaseQuantity (number, required), PurchasePricePerUnit (number, required), PurchaseExpenses (number), ExchangeRateToINR (number, required), LotTag (number), IsSTTPaid (boolean), IsTransferIn (boolean)
 - Computed (NEVER include): StockPurchaseID, TotalPurchaseValue, TotalPurchasePricePerUnit, TotalPurchaseValueINR, QFY, PurchaseLotID
 - Dedup key: PurchaseDate + SecurityName + PurchaseQuantity + PurchasePricePerUnit
 - **Transfer-in**: Set `IsTransferIn: true`. PurchasePricePerUnit carries the original cost basis from the source brokerage. PurchaseExpenses = 0. This is NOT a new acquisition — just shares arriving. **You MUST still create a record** so holdings are accurate.
 
-### StockOutflowsPlusSales
+### StockSalesOrTransferOuts
 Records sales and transfer-outs (shares leaving to another brokerage). A record MUST be created for every outflow event — including transfers. Transfer-outs are excluded from capital gains computation.
 - Fields: SaleDate (date, required), SecurityName (text, required), BrokerageName (text), SaleQuantity (number, required), SaleAmount (number, required), SaleExpenses (number), DomesticExpensesINR (number), ExchangeRateToINR (number, required), PurchaseLots (array of {PurchaseLotID, SaleQuantity}), IsTransferOut (boolean)
 - Computed (NEVER include): StockSaleID, TotalSaleValue, TotalSalePricePerUnit, TotalSaleValueINR, QFY, CgQ

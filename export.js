@@ -36,8 +36,8 @@ const DATE_FIELDS = {
   OtherIncome: 'IncomeDate',
   PropertyIncome: 'IncomeDate',
   SalaryIncome: 'EffectiveDate',
-  StockInflowsPlusAcquisitions: 'PurchaseDate',
-  StockOutflowsPlusSales: 'SaleDate'
+  StockPurchasesOrTransferIns: 'PurchaseDate',
+  StockSalesOrTransferOuts: 'SaleDate'
 };
 
 function dateToFY(dateStr) {
@@ -95,7 +95,7 @@ const COMPUTATIONS = {
     r.OtherIncomeID = String(i);
     r.QFY = dateToQFY(r.IncomeDate);
   },
-  StockInflowsPlusAcquisitions: (r, i) => {
+  StockPurchasesOrTransferIns: (r, i) => {
     r.StockPurchaseID = String(i);
     const qty = r.PurchaseQuantity || 0;
     r.TotalPurchaseValue = qty * (r.PurchasePricePerUnit || 0) + (r.PurchaseExpenses || 0);
@@ -103,7 +103,7 @@ const COMPUTATIONS = {
     r.TotalPurchaseValueINR = r.TotalPurchaseValue * (r.ExchangeRateToINR || 0);
     r.QFY = dateToQFY(r.PurchaseDate);
   },
-  StockOutflowsPlusSales: (r, i) => {
+  StockSalesOrTransferOuts: (r, i) => {
     r.StockSaleID = String(i);
     const qty = r.SaleQuantity || 0;
     r.TotalSaleValue = (r.SaleAmount || 0) - (r.SaleExpenses || 0);
@@ -129,7 +129,7 @@ const COMPUTATIONS = {
 const TABLE_NAMES = [
   'AdvanceTax', 'CapitalGainsConsolidated', 'ForeignAccounts',
   'ForeignIncome', 'OtherIncome', 'Properties', 'PropertyIncome',
-  'SalaryIncome', 'StockInflowsPlusAcquisitions', 'StockOutflowsPlusSales'
+  'SalaryIncome', 'StockPurchasesOrTransferIns', 'StockSalesOrTransferOuts'
 ];
 
 // ---- Helpers ----
@@ -169,7 +169,7 @@ TABLE_NAMES.forEach(t => {
 // All Income unified rows
 const incomeRows = [];
 const lotMap = {};
-getTable('StockInflowsPlusAcquisitions').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
+getTable('StockPurchasesOrTransferIns').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
 
 filterByFY(getTable('ForeignIncome'), selectedFY, 'ForeignIncome').forEach(r => {
   incomeRows.push({ date: r.IncomeDate, category: 'Foreign', description: `${r.IncomeSource || ''} — ${r.IncomeType || ''}`, amount: r.IncomeAmountINR || 0, relief: r.TaxesWithheldINR || 0, tds: 0, quarter: r.QFY || '' });
@@ -180,7 +180,7 @@ filterByFY(getTable('PropertyIncome'), selectedFY, 'PropertyIncome').forEach(r =
 filterByFY(getTable('CapitalGainsConsolidated'), selectedFY, 'CapitalGainsConsolidated').forEach(r => {
   incomeRows.push({ date: r.IncomeDate, category: 'Capital Gains', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '' });
 });
-filterByFY(getTable('StockOutflowsPlusSales'), selectedFY, 'StockOutflowsPlusSales').forEach(s => {
+filterByFY(getTable('StockSalesOrTransferOuts'), selectedFY, 'StockSalesOrTransferOuts').forEach(s => {
   const lots = s.PurchaseLots || [];
   let acqCostINR = 0;
   lots.forEach(l => { const p = lotMap[l.PurchaseLotID]; if (p) acqCostINR += (l.SaleQuantity || 0) * (p.TotalPurchasePricePerUnit || 0) * (p.ExchangeRateToINR || 0); });
@@ -212,7 +212,7 @@ const totalTDS = Object.values(catSummary).reduce((s, v) => s + v.tds, 0);
 
 // Capital Gains detail
 const cgRows = [];
-filterByFY(getTable('StockOutflowsPlusSales'), selectedFY, 'StockOutflowsPlusSales').forEach(s => {
+filterByFY(getTable('StockSalesOrTransferOuts'), selectedFY, 'StockSalesOrTransferOuts').forEach(s => {
   const lots = s.PurchaseLots || [];
   let acqCostINR = 0, earliestPurchaseDate = null;
   lots.forEach(l => {
@@ -238,8 +238,8 @@ const ltcgTotal = cgRows.filter(r => r.holdingType === 'LTCG').reduce((s, r) => 
 const stcgTotal = cgRows.filter(r => r.holdingType === 'STCG').reduce((s, r) => s + r.gainLoss, 0);
 
 // Stock Book holdings as-on
-const purchases = getTable('StockInflowsPlusAcquisitions');
-const sales = getTable('StockOutflowsPlusSales');
+const purchases = getTable('StockPurchasesOrTransferIns');
+const sales = getTable('StockSalesOrTransferOuts');
 const asOn = new Date(asOnDate + 'T23:59:59');
 const soldPerLot = {};
 sales.forEach(s => {

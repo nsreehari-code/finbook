@@ -199,7 +199,7 @@
             }
           },
 
-          "StockInflowsPlusAcquisitions": {
+          "StockPurchasesOrTransferIns": {
             "type": "array",
             "description": "Foreign stock purchase lots.",
             "items": {
@@ -223,7 +223,7 @@
             }
           },
 
-          "StockOutflowsPlusSales": {
+          "StockSalesOrTransferOuts": {
             "type": "array",
             "description": "Foreign stock sales with linked purchase lots.",
             "items": {
@@ -245,7 +245,7 @@
                     "type": "object",
                     "required": ["PurchaseLotID", "SaleQuantity"],
                     "properties": {
-                      "PurchaseLotID": { "type": "string", "description": "References StockInflowsPlusAcquisitions.PurchaseLotID." },
+                      "PurchaseLotID": { "type": "string", "description": "References StockPurchasesOrTransferIns.PurchaseLotID." },
                       "SaleQuantity": { "type": "number", "description": "Quantity sold from this lot." }
                     }
                   }

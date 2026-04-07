@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Wire Bootstrap radio toggles for view switching
-  document.querySelectorAll('input[name="aiView"], input[name="sbView"]').forEach(radio => {
+  document.querySelectorAll('input[name="aiView"]').forEach(radio => {
     radio.addEventListener('change', renderCurrentSection);
   });
 

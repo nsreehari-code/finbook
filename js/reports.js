@@ -176,7 +176,7 @@ function renderOtherIncome() {
 // ---- Stock Purchases ----
 function renderStockPurchases() {
   const fy = getSelectedFY();
-  const data = filterByFY(getTable('StockInflowsPlusAcquisitions'), fy, 'StockInflowsPlusAcquisitions')
+  const data = filterByFY(getTable('StockPurchasesOrTransferIns'), fy, 'StockPurchasesOrTransferIns')
     .sort((a, b) => (a.PurchaseDate || '').localeCompare(b.PurchaseDate || ''));
 
   renderWithFyGrouping('stockPurchasesTableContainer', data, fy, 'PurchaseDate', rows => {
@@ -204,12 +204,12 @@ function renderStockPurchases() {
 // ---- Stock Sales ----
 function renderStockSales() {
   const fy = getSelectedFY();
-  const data = filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales')
+  const data = filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts')
     .sort((a, b) => (a.SaleDate || '').localeCompare(b.SaleDate || ''));
 
   // Build currency map from purchases
   const secCurrencyMap = {};
-  getTable('StockInflowsPlusAcquisitions').forEach(p => {
+  getTable('StockPurchasesOrTransferIns').forEach(p => {
     const key = `${p.BrokerageName}|${p.SecurityName}`;
     if (p.CurrencyCode) secCurrencyMap[key] = p.CurrencyCode;
   });
@@ -495,10 +495,10 @@ function renderAllIncome() {
 
   // Capital Gains from Stock Sales
   const lotMap = {};
-  getTable('StockInflowsPlusAcquisitions').forEach(p => {
+  getTable('StockPurchasesOrTransferIns').forEach(p => {
     if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p;
   });
-  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
+  filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
     lots.forEach(l => {
@@ -714,7 +714,7 @@ function buildDetailedTable(rows) {
   </table>`;
 }
 
-// ---- Stock Book (transaction log) ----
+// ---- Stock Holdings (as-on date, inventory view) ----
 function getAsOnDefault() {
   const fy = getSelectedFY();
   const today = new Date().toISOString().slice(0, 10);
@@ -724,30 +724,154 @@ function getAsOnDefault() {
   return fyEnd < today ? fyEnd : today;
 }
 
-function renderStockBook() {
-  const asOnInput = document.getElementById('sbAsOnDate');
-  const secFilter = document.getElementById('sbSecurityFilter');
+function renderStockHoldings() {
+  const asOnInput = document.getElementById('shAsOnDate');
+  const secFilter = document.getElementById('shSecurityFilter');
   if (!asOnInput.value) asOnInput.value = getAsOnDefault();
   const asOn = new Date(asOnInput.value + 'T23:59:59');
 
-  // Build merged transaction rows from purchases and sales
-  const purchases = getTable('StockInflowsPlusAcquisitions');
-  const sales = getTable('StockOutflowsPlusSales');
+  const purchases = getTable('StockPurchasesOrTransferIns');
+  const sales = getTable('StockSalesOrTransferOuts');
 
-  // Populate security filter options
+  // Populate security filter
   const allSecurities = [...new Set(purchases.map(p => p.SecurityName).filter(Boolean))].sort();
   const curSec = secFilter.value;
   secFilter.innerHTML = '<option value="">All</option>' +
     allSecurities.map(s => `<option value="${s}"${s === curSec ? ' selected' : ''}>${s}</option>`).join('');
-
   const secVal = secFilter.value;
+
+  // Currency map
+  const secCurrencyMap = {};
+  purchases.forEach(p => { if (p.SecurityName && p.CurrencyCode) secCurrencyMap[p.SecurityName] = p.CurrencyCode; });
+
+  // Filter purchases by as-on and security
+  const filteredPurchases = purchases.filter(p => {
+    if (secVal && p.SecurityName !== secVal) return false;
+    if (asOn && new Date(p.PurchaseDate) > asOn) return false;
+    return true;
+  });
+
+  // Compute sold qty per lot
+  const soldPerLot = {};
+  sales.forEach(s => {
+    if (asOn && new Date(s.SaleDate) > asOn) return;
+    (s.PurchaseLots || []).forEach(l => {
+      soldPerLot[l.PurchaseLotID] = (soldPerLot[l.PurchaseLotID] || 0) + (l.SaleQuantity || 0);
+    });
+  });
+
+  // Build inventory
+  const inventory = {};
+  filteredPurchases.forEach(p => {
+    const sec = p.SecurityName || '';
+    if (!inventory[sec]) inventory[sec] = { qty: 0, totalCost: 0, totalCostINR: 0, lots: [] };
+    const inv = inventory[sec];
+    const sold = soldPerLot[p.PurchaseLotID] || 0;
+    const remaining = Math.max(0, (p.PurchaseQuantity || 0) - sold);
+    const costRatio = (p.PurchaseQuantity || 0) > 0 ? remaining / p.PurchaseQuantity : 0;
+    const lotCost = (p.TotalPurchaseValue || 0) * costRatio;
+    const lotCostINR = (p.TotalPurchaseValueINR || 0) * costRatio;
+    inv.qty += remaining;
+    inv.totalCost += lotCost;
+    inv.totalCostINR += lotCostINR;
+    if (remaining > 0.0005) {
+      inv.lots.push({
+        lotId: p.PurchaseLotID || '',
+        date: p.PurchaseDate,
+        brokerage: p.BrokerageName || '',
+        remaining,
+        price: p.PurchasePricePerUnit || 0,
+        currency: p.CurrencyCode || '',
+        cost: lotCost,
+        costINR: lotCostINR
+      });
+    }
+  });
+
+  const showLots = document.getElementById('shShowLots').checked;
+  const totalEl = document.getElementById('shTotalHoldings');
+  const container = document.getElementById('shTableContainer');
+
+  if (showLots) {
+    const thead = `<th>Security</th><th>Lot ID</th><th>Date</th><th>Brokerage</th><th class="text-end">Remaining</th><th class="text-end">Price ${FC}</th><th class="text-end">Cost ${FC}</th><th class="text-end">Cost (INR)</th>`;
+    const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
+    let tbody = '';
+    entries.forEach(([sec, inv]) => {
+      const cur = secCurrencyMap[sec] || '';
+      inv.lots.forEach((lot, i) => {
+        tbody += `<tr class="lot-detail-row">
+          <td>${i === 0 ? sec : ''}</td>
+          <td class="text-muted">${lot.lotId}</td>
+          <td>${fmtDate(lot.date)}</td>
+          <td>${lot.brokerage}</td>
+          <td class="num">${lot.remaining.toFixed(3)}</td>
+          <td class="num">${fmtC(lot.price, lot.currency)}</td>
+          <td class="num">${fmtC(lot.cost, lot.currency)}</td>
+          <td class="num">${fmtR(lot.costINR)}</td>
+        </tr>`;
+      });
+      const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
+      tbody += `<tr class="lot-total-row fw-bold">
+        <td>${sec} Total</td><td></td><td></td><td></td>
+        <td class="num">${inv.qty.toFixed(3)}</td>
+        <td class="num">${fmtC(avg, cur)}</td>
+        <td class="num">${fmtC(inv.totalCost, cur)}</td>
+        <td class="num">${fmtR(inv.totalCostINR)}</td>
+      </tr>`;
+    });
+    container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">Holdings as on ${fmtDate(asOnInput.value)}</h5><table class="table table-sm table-hover align-middle"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
+  } else {
+    const thead = `<th>Security</th><th class="text-end">Quantity</th><th class="text-end">Avg Cost ${FC}</th><th class="text-end">Total Cost ${FC}</th><th class="text-end">Total Cost (INR)</th>`;
+    const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
+    const tbody = entries.map(([sec, inv]) => {
+      const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
+      const cur = secCurrencyMap[sec] || '';
+      return `<tr>
+        <td>${sec}</td>
+        <td class="num">${inv.qty.toFixed(3)}</td>
+        <td class="num">${fmtC(avg, cur)}</td>
+        <td class="num">${fmtC(inv.totalCost, cur)}</td>
+        <td class="num">${fmtR(inv.totalCostINR)}</td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">Holdings as on ${fmtDate(asOnInput.value)}</h5><table class="table table-sm table-hover align-middle"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
+  }
+
+  // Total holdings
+  let grandTotalINR = 0;
+  Object.values(inventory).forEach(inv => { grandTotalINR += inv.totalCostINR; });
+  totalEl.classList.remove('d-none');
+  totalEl.innerHTML = `<div class="summary-cards"><div class="summary-card card p-3"><span class="label">Total Holdings Value</span><div class="value">${fmtR(grandTotalINR)}</div></div></div>`;
+
+  asOnInput.onchange = renderStockHoldings;
+  secFilter.onchange = renderStockHoldings;
+  document.getElementById('shShowLots').onchange = renderStockHoldings;
+}
+
+// ---- Stock Transactions (FY-filtered transaction log) ----
+function renderStockTransactions() {
+  const secFilter = document.getElementById('stSecurityFilter');
+  const fy = getSelectedFY();
+
+  const purchases = getTable('StockPurchasesOrTransferIns');
+  const sales = getTable('StockSalesOrTransferOuts');
+
+  // Populate security filter
+  const allSecurities = [...new Set(purchases.map(p => p.SecurityName).filter(Boolean))].sort();
+  const curSec = secFilter.value;
+  secFilter.innerHTML = '<option value="">All</option>' +
+    allSecurities.map(s => `<option value="${s}"${s === curSec ? ' selected' : ''}>${s}</option>`).join('');
+  const secVal = secFilter.value;
+
+  // Currency map
+  const secCurrencyMap = {};
+  purchases.forEach(p => { if (p.SecurityName && p.CurrencyCode) secCurrencyMap[p.SecurityName] = p.CurrencyCode; });
+
   const rows = [];
 
-  // Add purchases
-  purchases.forEach(p => {
+  // Add purchases (FY-filtered)
+  filterByFY(purchases, fy, 'StockPurchasesOrTransferIns').forEach(p => {
     if (secVal && p.SecurityName !== secVal) return;
-    const d = new Date(p.PurchaseDate);
-    if (asOn && d > asOn) return;
     rows.push({
       date: p.PurchaseDate,
       type: 'Buy',
@@ -763,11 +887,9 @@ function renderStockBook() {
     });
   });
 
-  // Add sales (expand each sale's lots as separate rows)
-  sales.forEach(s => {
+  // Add sales (FY-filtered)
+  filterByFY(sales, fy, 'StockSalesOrTransferOuts').forEach(s => {
     if (secVal && s.SecurityName !== secVal) return;
-    const d = new Date(s.SaleDate);
-    if (asOn && d > asOn) return;
     const lots = s.PurchaseLots || [];
     const totalLotQty = lots.reduce((sum, l) => sum + (l.SaleQuantity || 0), 0);
     const pricePerUnit = totalLotQty > 0 ? (s.SaleAmount || 0) / totalLotQty : 0;
@@ -786,154 +908,38 @@ function renderStockBook() {
     });
   });
 
-  // Resolve currency for sell rows from purchases
-  const secCurrencyMap = {};
-  purchases.forEach(p => { if (p.SecurityName && p.CurrencyCode) secCurrencyMap[p.SecurityName] = p.CurrencyCode; });
+  // Resolve currency for sell rows
   rows.forEach(r => { if (!r.currency && r.security) r.currency = secCurrencyMap[r.security] || ''; });
 
-  // Sort by date, then buys before sells on same date
+  // Sort by date, buys before sells on same date
   rows.sort((a, b) => {
     const dc = (a.date || '').localeCompare(b.date || '');
     if (dc !== 0) return dc;
     return a.type === 'Buy' ? -1 : 1;
   });
 
-  const isDetailed = document.querySelector('input[name="sbView"]:checked')?.value === 'detailed';
-  const totalEl = document.getElementById('sbTotalHoldings');
+  const container = document.getElementById('stTableContainer');
+  const isAllYears = !fy || fy === 'All';
 
-  // Hide lots toggle and total when in Transactions view
-  if (isDetailed) {
-    document.getElementById('sbLotsToggle').classList.add('d-none');
-    totalEl.classList.add('d-none');
-  }
-
-  if (isDetailed) {
-    // Detailed view: all transactions with FY grouping
-    const fy = getSelectedFY();
-    const isAllYears = !fy || fy === 'All';
-    const container = document.getElementById('sbTableContainer');
-
-    if (isAllYears) {
-      const fyGroups = {};
-      rows.forEach(r => {
-        const rfy = dateToFY(r.date) || 'Unknown';
-        if (!fyGroups[rfy]) fyGroups[rfy] = [];
-        fyGroups[rfy].push(r);
-      });
-      const sortedFYs = Object.keys(fyGroups).sort().reverse();
-      let html = '';
-      sortedFYs.forEach(fyKey => {
-        html += `<h5 class="mt-4 mb-2 fw-bold">FY ${fyKey}</h5>`;
-        html += buildStockTxnTable(fyGroups[fyKey]);
-      });
-      container.innerHTML = html;
-    } else {
-      container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">FY ${fy}</h5>` + buildStockTxnTable(rows);
-    }
+  if (isAllYears) {
+    const fyGroups = {};
+    rows.forEach(r => {
+      const rfy = dateToFY(r.date) || 'Unknown';
+      if (!fyGroups[rfy]) fyGroups[rfy] = [];
+      fyGroups[rfy].push(r);
+    });
+    const sortedFYs = Object.keys(fyGroups).sort().reverse();
+    let html = '';
+    sortedFYs.forEach(fyKey => {
+      html += `<h5 class="mt-4 mb-2 fw-bold">FY ${fyKey}</h5>`;
+      html += buildStockTxnTable(fyGroups[fyKey]);
+    });
+    container.innerHTML = html;
   } else {
-    // Holdings view: inventory as-on date
-    const showLots = document.getElementById('sbShowLots').checked;
-
-    // Show/hide lots toggle (only in Holdings mode)
-    document.getElementById('sbLotsToggle').classList.remove('d-none');
-
-    // Build lot-level data from already-loaded purchases & sales
-    // Compute sold qty per lot from sales (reuse purchases/sales already fetched above)
-    const soldPerLot = {}; // lotId -> total sold
-    sales.forEach(s => {
-      const d = new Date(s.SaleDate);
-      if (asOn && d > asOn) return;
-      (s.PurchaseLots || []).forEach(l => {
-        soldPerLot[l.PurchaseLotID] = (soldPerLot[l.PurchaseLotID] || 0) + (l.SaleQuantity || 0);
-      });
-    });
-
-    // Build per-security inventory + lot details from purchases (already filtered in rows)
-    const inventory = {}; // security -> { qty, totalCost, totalCostINR, lots:[] }
-    rows.filter(r => r.type === 'Buy').forEach(r => {
-      if (!inventory[r.security]) inventory[r.security] = { qty: 0, totalCost: 0, totalCostINR: 0, lots: [] };
-      const inv = inventory[r.security];
-      const sold = soldPerLot[r.lotId] || 0;
-      const remaining = Math.max(0, r.qty - sold);
-      inv.qty += remaining;
-      const costRatio = r.qty > 0 ? remaining / r.qty : 0;
-      const lotCost = r.value * costRatio;
-      const lotCostINR = r.valueINR * costRatio;
-      inv.totalCost += lotCost;
-      inv.totalCostINR += lotCostINR;
-      if (remaining > 0.0005) {
-        inv.lots.push({
-          lotId: r.lotId,
-          date: r.date,
-          brokerage: r.brokerage,
-          remaining: remaining,
-          price: r.price,
-          currency: r.currency,
-          cost: lotCost,
-          costINR: lotCostINR
-        });
-      }
-    });
-
-    if (showLots) {
-      const thead = `<th>Security</th><th>Lot ID</th><th>Date</th><th>Brokerage</th><th class="text-end">Remaining</th><th class="text-end">Price ${FC}</th><th class="text-end">Cost ${FC}</th><th class="text-end">Cost (INR)</th>`;
-
-      const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
-      let tbody = '';
-      entries.forEach(([sec, inv]) => {
-        const cur = secCurrencyMap[sec] || '';
-        inv.lots.forEach((lot, i) => {
-          tbody += `<tr class="lot-detail-row">
-            <td>${i === 0 ? sec : ''}</td>
-            <td class="text-muted">${lot.lotId}</td>
-            <td>${fmtDate(lot.date)}</td>
-            <td>${lot.brokerage}</td>
-            <td class="num">${lot.remaining.toFixed(3)}</td>
-            <td class="num">${fmtC(lot.price, lot.currency)}</td>
-            <td class="num">${fmtC(lot.cost, lot.currency)}</td>
-            <td class="num">${fmtR(lot.costINR)}</td>
-          </tr>`;
-        });
-        // Security total row
-        const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
-        tbody += `<tr class="lot-total-row fw-bold">
-          <td>${sec} Total</td><td></td><td></td><td></td>
-          <td class="num">${inv.qty.toFixed(3)}</td>
-          <td class="num">${fmtC(avg, cur)}</td>
-          <td class="num">${fmtC(inv.totalCost, cur)}</td>
-          <td class="num">${fmtR(inv.totalCostINR)}</td>
-        </tr>`;
-      });
-      document.getElementById('sbTableContainer').innerHTML = `<h5 class="mt-4 mb-2 fw-bold">Holdings as on ${fmtDate(asOnInput.value)}</h5><table class="table table-sm table-hover align-middle"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
-    } else {
-      const thead = `<th>Security</th><th class="text-end">Quantity</th><th class="text-end">Avg Cost ${FC}</th><th class="text-end">Total Cost ${FC}</th><th class="text-end">Total Cost (INR)</th>`;
-
-      const entries = Object.entries(inventory).filter(([, v]) => v.qty > 0.0005).sort((a, b) => a[0].localeCompare(b[0]));
-      const tbody = entries.map(([sec, inv]) => {
-        const avg = inv.qty > 0 ? inv.totalCost / inv.qty : 0;
-        const cur = secCurrencyMap[sec] || '';
-        return `<tr>
-          <td>${sec}</td>
-          <td class="num">${inv.qty.toFixed(3)}</td>
-          <td class="num">${fmtC(avg, cur)}</td>
-          <td class="num">${fmtC(inv.totalCost, cur)}</td>
-          <td class="num">${fmtR(inv.totalCostINR)}</td>
-        </tr>`;
-      }).join('');
-      document.getElementById('sbTableContainer').innerHTML = `<h5 class="mt-4 mb-2 fw-bold">Holdings as on ${fmtDate(asOnInput.value)}</h5><table class="table table-sm table-hover align-middle"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
-    }
-
-    // Compute and show total holdings value
-    let grandTotalINR = 0;
-    Object.values(inventory).forEach(inv => { grandTotalINR += inv.totalCostINR; });
-    totalEl.classList.remove('d-none');
-    totalEl.innerHTML = `<div class="summary-cards"><div class="summary-card card p-3"><span class="label">Total Holdings Value</span><div class="value">${fmtR(grandTotalINR)}</div></div></div>`;
+    container.innerHTML = `<h5 class="mt-4 mb-2 fw-bold">FY ${fy}</h5>` + buildStockTxnTable(rows);
   }
 
-  // Wire filter change events
-  asOnInput.onchange = renderStockBook;
-  secFilter.onchange = renderStockBook;
-  document.getElementById('sbShowLots').onchange = renderStockBook;
+  secFilter.onchange = renderStockTransactions;
 }
 
 function buildStockTxnTable(rows) {
@@ -986,12 +992,12 @@ function renderCapitalGainsView() {
 
   // Build purchase lot lookup: PurchaseLotID -> purchase record
   const lotMap = {};
-  getTable('StockInflowsPlusAcquisitions').forEach(p => {
+  getTable('StockPurchasesOrTransferIns').forEach(p => {
     if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p;
   });
 
   // Stock Sales → Capital Gains rows
-  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
+  filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
     let earliestPurchaseDate = null;
@@ -1171,7 +1177,7 @@ function buildExportData() {
   // ---- All Income unified rows ----
   const incomeRows = [];
   const lotMap = {};
-  getTable('StockInflowsPlusAcquisitions').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
+  getTable('StockPurchasesOrTransferIns').forEach(p => { if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p; });
 
   filterByFY(getTable('ForeignIncome'), fy, 'ForeignIncome').forEach(r => {
     incomeRows.push({ date: r.IncomeDate, category: 'Foreign', description: `${r.IncomeSource || ''} — ${r.IncomeType || ''}`, amount: r.IncomeAmountINR || 0, relief: r.TaxesWithheldINR || 0, tds: 0, quarter: r.QFY || '' });
@@ -1182,7 +1188,7 @@ function buildExportData() {
   filterByFY(getTable('CapitalGainsConsolidated'), fy, 'CapitalGainsConsolidated').forEach(r => {
     incomeRows.push({ date: r.IncomeDate, category: 'Capital Gains', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '' });
   });
-  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
+  filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
     if (fy && fy !== 'All' && dateToFY(s.SaleDate) !== fy) return;
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
@@ -1215,7 +1221,7 @@ function buildExportData() {
 
   // ---- Capital Gains detail ----
   const cgRows = [];
-  filterByFY(getTable('StockOutflowsPlusSales'), fy, 'StockOutflowsPlusSales').forEach(s => {
+  filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0, earliestPurchaseDate = null;
     lots.forEach(l => {
@@ -1241,8 +1247,8 @@ function buildExportData() {
   const stcgTotal = cgRows.filter(r => r.holdingType === 'STCG').reduce((s, r) => s + r.gainLoss, 0);
 
   // ---- Stock Book holdings as-on ----
-  const purchases = getTable('StockInflowsPlusAcquisitions');
-  const sales = getTable('StockOutflowsPlusSales');
+  const purchases = getTable('StockPurchasesOrTransferIns');
+  const sales = getTable('StockSalesOrTransferOuts');
   const asOn = new Date(asOnDate + 'T23:59:59');
   const soldPerLot = {};
   sales.forEach(s => {
@@ -1317,7 +1323,9 @@ const SECTION_RENDERERS = {
   otherIncome: renderOtherIncome,
   stockPurchases: renderStockPurchases,
   stockSales: renderStockSales,
-  stockBook: renderStockBook,
+  stockBook: renderStockHoldings,
+  stockHoldings: renderStockHoldings,
+  stockTransactions: renderStockTransactions,
   capitalGainsView: renderCapitalGainsView,
   advanceTax: renderAdvanceTax,
   allIncome: renderAllIncome,
