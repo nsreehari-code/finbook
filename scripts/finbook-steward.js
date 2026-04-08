@@ -222,6 +222,45 @@ function cmdConfirm() {
 
   console.log(`Confirming thread: ${active.batchId}`);
 
+  // Validate finbook.json before merge
+  const validateScript = path.join(REPO_DIR, '.github', 'scripts', 'validate-finbook.js');
+  const finbookJson = path.join(REPO_DIR, 'DB', 'finbook.json');
+  if (fs.existsSync(validateScript) && fs.existsSync(finbookJson)) {
+    console.log('Running finbook validation...');
+    try {
+      const { execFileSync } = require('child_process');
+      const out = execFileSync('node', [validateScript, finbookJson], { encoding: 'utf-8' });
+      const result = JSON.parse(out);
+      if (!result.valid) {
+        console.error('Cannot confirm — finbook.json has validation errors:');
+        (result.errorDetails || []).forEach(e => console.error(`  - ${e}`));
+        console.error('Fix the errors and try again.');
+        process.exit(1);
+      }
+      if (result.warnings > 0) {
+        console.warn(`Validation passed with ${result.warnings} warning(s):`);
+        (result.warningDetails || []).forEach(w => console.warn(`  - ${w}`));
+      } else {
+        console.log('Validation passed.');
+      }
+    } catch (e) {
+      if (e.status === 2) {
+        // Validation errors
+        try {
+          const result = JSON.parse(e.stdout);
+          console.error('Cannot confirm — finbook.json has validation errors:');
+          (result.errorDetails || []).forEach(err => console.error(`  - ${err}`));
+        } catch (_) {
+          console.error('Cannot confirm — finbook.json validation failed.');
+          console.error(e.stderr || e.message);
+        }
+        process.exit(1);
+      }
+      console.error(`Validation script error: ${e.message}`);
+      process.exit(1);
+    }
+  }
+
   const prompt = `The user has confirmed batch ${active.batchId}. The current branch is ${active.branch}.
 
 Merge this batch branch to main:

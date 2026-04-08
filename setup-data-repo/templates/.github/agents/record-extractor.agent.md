@@ -1,6 +1,6 @@
 ---
 description: "Use to extract financial records from documents into DB/finbook.json. Handles table field mappings, dedup, and search strategies."
-tools: [read, edit]
+tools: [read, edit, runInTerminal]
 user-invocable: false
 ---
 
@@ -108,3 +108,13 @@ When in doubt, gather more evidence before deciding:
 2. Search existing records for the same entity (employer, brokerage, security) across all accounts
 3. Look at THREAD.md from prior batches in `threads/` for similar document types
 4. If still ambiguous — report back. Never guess.
+
+## Post-Edit Validation
+
+After editing `DB/finbook.json`, **always run the validator**:
+
+```
+node .github/scripts/validate-finbook.js DB/finbook.json
+```
+
+This checks required fields, date formats, number types, computed field leakage, and structural integrity. If validation fails, fix the issues before reporting back to the orchestrator. Do not leave invalid data in the DB.
