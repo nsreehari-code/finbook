@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const core = require('./finbook-core');
+const core = (() => { try { return require('./finbook-core'); } catch(e) { return require('../../../../js/finbook-core'); } })();
 
 // ---- Schema definitions (shared from finbook-core) ----
 

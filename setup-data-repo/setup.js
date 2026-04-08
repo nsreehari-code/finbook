@@ -50,6 +50,12 @@ const INFRA_PATHS = [
   'README.md',
 ];
 
+// Extra files from finbook that should be copied into the data repo.
+// Source paths are relative to finbook root; dest paths are relative to target repo.
+const EXTRA_COPIES = [
+  { src: 'js/finbook-core.js', dest: '.github/scripts/finbook-core.js' },
+];
+
 // Copy a directory recursively
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
@@ -80,6 +86,17 @@ function updateInfra(templatesDir, targetPath) {
       fs.copyFileSync(src, dest);
       console.log(`  updated ${relPath}`);
     }
+    updated++;
+  }
+  // Copy extra files from finbook root into target
+  const finbookRoot = path.resolve(__dirname, '..');
+  for (const { src: relSrc, dest: relDest } of EXTRA_COPIES) {
+    const srcPath = path.join(finbookRoot, relSrc);
+    const destPath = path.join(targetPath, relDest);
+    if (!fs.existsSync(srcPath)) { console.warn(`  warning: extra source not found: ${relSrc}`); continue; }
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.copyFileSync(srcPath, destPath);
+    console.log(`  copied ${relSrc} → ${relDest}`);
     updated++;
   }
   return updated;
@@ -161,6 +178,17 @@ if (isUpdate) {
 
   // Copy all templates
   copyDir(templatesDir, targetPath);
+
+  // Copy extra files from finbook root
+  const finbookRoot = path.resolve(__dirname, '..');
+  for (const { src: relSrc, dest: relDest } of EXTRA_COPIES) {
+    const srcPath = path.join(finbookRoot, relSrc);
+    const destPath = path.join(targetPath, relDest);
+    if (fs.existsSync(srcPath)) {
+      fs.mkdirSync(path.dirname(destPath), { recursive: true });
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
 
   // Create threads directory with .gitkeep
   const threadsDir = path.join(targetPath, 'threads');

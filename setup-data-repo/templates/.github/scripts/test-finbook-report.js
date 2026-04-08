@@ -3,7 +3,7 @@
 
 'use strict';
 
-const core = require('./finbook-core');
+const core = (() => { try { return require('./finbook-core'); } catch(e) { return require('../../../../js/finbook-core'); } })();
 
 let passed = 0, failed = 0;
 function test(name, fn) {
