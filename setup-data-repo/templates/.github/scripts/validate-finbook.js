@@ -23,48 +23,13 @@
 
 const fs = require('fs');
 const path = require('path');
+const core = require('./finbook-core');
 
-// ---- Schema definitions ----
+// ---- Schema definitions (shared from finbook-core) ----
 
-const TABLE_NAMES = [
-  'AdvanceTax', 'CapitalGainsConsolidated', 'ForeignAccounts',
-  'ForeignIncome', 'OtherIncome', 'Properties', 'PropertyIncome',
-  'SalaryIncome', 'StockPurchasesOrTransferIns', 'StockSalesOrTransferOuts'
-];
+const { TABLE_NAMES, COMPUTED_FIELDS, REQUIRED_FIELDS, NUMBER_FIELDS } = core;
 
-const COMPUTED_FIELDS = {
-  ForeignIncome: ['ForeignIncomeID', 'IncomeAmountINR', 'TaxesWithheldINR', 'QFY'],
-  PropertyIncome: ['PropertyIncomeID', 'NetIncome', 'QFY'],
-  CapitalGainsConsolidated: ['CapitalGainsID', 'IncomeAmount', 'QFY', 'CgQ'],
-  OtherIncome: ['OtherIncomeID', 'QFY'],
-  StockPurchasesOrTransferIns: ['StockPurchaseID', 'TotalPurchaseValue', 'TotalPurchasePricePerUnit', 'TotalPurchaseValueINR', 'QFY'],
-  StockSalesOrTransferOuts: ['StockSaleID', 'TotalSaleValue', 'TotalSalePricePerUnit', 'TotalSaleValueINR', 'QFY', 'CgQ'],
-  SalaryIncome: ['SalaryIncomeID', 'GrossTaxableIncome', 'NetTaxableIncome', 'QFY'],
-  AdvanceTax: ['AdvanceTaxID', 'QFY', 'CgQ']
-};
-
-const REQUIRED_FIELDS = {
-  SalaryIncome: ['EffectiveDate', 'Employer', 'GrossTaxable'],
-  ForeignIncome: ['IncomeDate', 'IncomeSource', 'Currency', 'IncomeAmount', 'ExchangeRateToINR'],
-  PropertyIncome: ['IncomeDate', 'PropertyID', 'GrossIncome'],
-  CapitalGainsConsolidated: ['IncomeDate', 'IncomeDescription'],
-  OtherIncome: ['IncomeDate', 'IncomeDescription', 'IncomeAmount'],
-  StockPurchasesOrTransferIns: ['PurchaseDate', 'SecurityName', 'CurrencyCode', 'PurchaseQuantity', 'PurchasePricePerUnit', 'ExchangeRateToINR'],
-  StockSalesOrTransferOuts: ['SaleDate', 'SecurityName', 'SaleQuantity', 'SaleAmount', 'ExchangeRateToINR'],
-  AdvanceTax: ['EffectiveDate', 'TaxAmountPaid']
-};
-
-const NUMBER_FIELDS = {
-  SalaryIncome: ['GrossTaxable', 'TaxablePerquisites', 'Exemptions', 'Deductions', 'TDSDeducted'],
-  ForeignIncome: ['IncomeAmount', 'TaxesWithheld', 'ExchangeRateToINR'],
-  PropertyIncome: ['GrossIncome', 'TotalExpenses', 'TDSDeducted'],
-  CapitalGainsConsolidated: ['SaleValue', 'AcquisitionCost', 'Expenses', 'TDSDeducted'],
-  OtherIncome: ['IncomeAmount', 'TDSDeducted'],
-  StockPurchasesOrTransferIns: ['PurchaseQuantity', 'PurchasePricePerUnit', 'PurchaseExpenses', 'ExchangeRateToINR', 'LotTag'],
-  StockSalesOrTransferOuts: ['SaleQuantity', 'SaleAmount', 'SaleExpenses', 'DomesticExpensesINR', 'ExchangeRateToINR'],
-  AdvanceTax: ['TaxAmountPaid']
-};
-
+// Validator DATE_FIELDS: array of all date fields per table (broader than core's single FY-filter field)
 const DATE_FIELDS = {
   SalaryIncome: ['EffectiveDate'],
   ForeignIncome: ['IncomeDate'],

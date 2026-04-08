@@ -1,15 +1,14 @@
 // data.js — Data layer: account-grouped JSON schema
 //
 // Schema: { accounts: [ { account, name, ForeignIncome:[], ... }, ... ] }
+// Depends on: finbook-core.js (loaded before this script)
 //
 
 let DB = { accounts: [], config: {} };
 
-const TABLE_NAMES = [
-  'AdvanceTax', 'CapitalGainsConsolidated', 'ForeignAccounts',
-  'ForeignIncome', 'OtherIncome', 'Properties', 'PropertyIncome',
-  'SalaryIncome', 'StockPurchasesOrTransferIns', 'StockSalesOrTransferOuts'
-];
+// ---- Imports from FinbookCore ----
+const { TABLE_NAMES, DATE_FIELDS, COMPUTATIONS, COMPUTED_FIELDS, MONTHS,
+        dateToFY, dateToQFY, dateToCgQ, derivePurchaseLotID } = FinbookCore;
 
 let isDirty = false;
 let dataLoaded = false;
@@ -252,127 +251,7 @@ function filterByFY(data, fy, tableName) {
   return data.filter(row => dateToFY(row[dateField]) === fy);
 }
 
-// ---- Computed fields ----
-
-const COMPUTATIONS = {
-  ForeignIncome: (r, i) => {
-    r.ForeignIncomeID = String(i);
-    r.IncomeAmountINR = (r.IncomeAmount || 0) * (r.ExchangeRateToINR || 0);
-    r.TaxesWithheldINR = (r.TaxesWithheld || 0) * (r.ExchangeRateToINR || 0);
-    r.QFY = dateToQFY(r.IncomeDate);
-  },
-  PropertyIncome: (r, i) => {
-    r.PropertyIncomeID = String(i);
-    const gross = r.GrossIncome || 0;
-    r.NetIncome = gross - (r.TotalExpenses || 0) - (gross * 0.3);
-    r.QFY = dateToQFY(r.IncomeDate);
-  },
-  CapitalGainsConsolidated: (r, i) => {
-    r.CapitalGainsID = String(i);
-    r.IncomeAmount = (r.SaleValue || 0) - (r.AcquisitionCost || 0) - (r.Expenses || 0);
-    r.QFY = dateToQFY(r.IncomeDate);
-    r.CgQ = dateToCgQ(r.IncomeDate);
-  },
-  OtherIncome: (r, i) => {
-    r.OtherIncomeID = String(i);
-    r.QFY = dateToQFY(r.IncomeDate);
-  },
-  StockPurchasesOrTransferIns: (r, i) => {
-    r.StockPurchaseID = String(i);
-    const qty = r.PurchaseQuantity || 0;
-    r.TotalPurchaseValue = qty * (r.PurchasePricePerUnit || 0) + (r.PurchaseExpenses || 0);
-    r.TotalPurchasePricePerUnit = qty > 0 ? r.TotalPurchaseValue / qty : 0;
-    r.TotalPurchaseValueINR = r.TotalPurchaseValue * (r.ExchangeRateToINR || 0);
-    r.QFY = dateToQFY(r.PurchaseDate);
-  },
-  StockSalesOrTransferOuts: (r, i) => {
-    r.StockSaleID = String(i);
-    const qty = r.SaleQuantity || 0;
-    r.TotalSaleValue = (r.SaleAmount || 0) - (r.SaleExpenses || 0);
-    r.TotalSalePricePerUnit = qty > 0 ? r.TotalSaleValue / qty : 0;
-    r.TotalSaleValueINR = r.TotalSaleValue * (r.ExchangeRateToINR || 0);
-    r.QFY = dateToQFY(r.SaleDate);
-    r.CgQ = dateToCgQ(r.SaleDate);
-  },
-  SalaryIncome: (r, i) => {
-    r.SalaryIncomeID = String(i);
-    const gross = (r.GrossTaxable || 0) + (r.TaxablePerquisites || 0);
-    r.GrossTaxableIncome = gross + (r.Exemptions || 0);
-    r.NetTaxableIncome = r.GrossTaxableIncome - (r.Deductions || 0);
-    r.QFY = dateToQFY(r.EffectiveDate);
-  },
-  AdvanceTax: (r, i) => {
-    r.AdvanceTaxID = String(i);
-    r.QFY = dateToQFY(r.EffectiveDate || r.PaymentDate);
-    r.CgQ = dateToCgQ(r.EffectiveDate || r.PaymentDate);
-  }
-};
-
-const COMPUTED_FIELDS = {
-  ForeignIncome: ['ForeignIncomeID', 'IncomeAmountINR', 'TaxesWithheldINR', 'QFY'],
-  PropertyIncome: ['PropertyIncomeID', 'NetIncome', 'QFY'],
-  CapitalGainsConsolidated: ['CapitalGainsID', 'IncomeAmount', 'QFY', 'CgQ'],
-  OtherIncome: ['OtherIncomeID', 'QFY'],
-  StockPurchasesOrTransferIns: ['StockPurchaseID', 'TotalPurchaseValue', 'TotalPurchasePricePerUnit', 'TotalPurchaseValueINR', 'QFY'],
-  StockSalesOrTransferOuts: ['StockSaleID', 'TotalSaleValue', 'TotalSalePricePerUnit', 'TotalSaleValueINR', 'QFY', 'CgQ'],
-  SalaryIncome: ['SalaryIncomeID', 'GrossTaxableIncome', 'NetTaxableIncome', 'QFY'],
-  AdvanceTax: ['AdvanceTaxID', 'QFY', 'CgQ']
-};
-
-// ---- Helpers ----
-
-const DATE_FIELDS = {
-  AdvanceTax: 'EffectiveDate',
-  CapitalGainsConsolidated: 'IncomeDate',
-  ForeignIncome: 'IncomeDate',
-  OtherIncome: 'IncomeDate',
-  PropertyIncome: 'IncomeDate',
-  SalaryIncome: 'EffectiveDate',
-  StockPurchasesOrTransferIns: 'PurchaseDate',
-  StockSalesOrTransferOuts: 'SaleDate'
-};
-
-function dateToFY(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  const month = d.getMonth(); // 0-based, Apr=3
-  const year = d.getFullYear();
-  const startYear = month >= 3 ? year : year - 1;
-  return `${startYear}-${String(startYear + 1).slice(-2)}`;
-}
-
-function dateToQFY(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  const m = d.getMonth(); // 0=Jan
-  if (m >= 3 && m <= 5) return 'Q1';
-  if (m >= 6 && m <= 8) return 'Q2';
-  if (m >= 9 && m <= 11) return 'Q3';
-  return 'Q4'; // Jan-Mar
-}
-
-function dateToCgQ(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  const m = d.getMonth(); // 0=Jan
-  const day = d.getDate();
-  // mmdd for easy range comparison (FY month-day)
-  if (m === 3 || (m === 4) || (m === 5 && day <= 15)) return 'cgQ1';               // 01-Apr → 15-Jun
-  if ((m === 5 && day >= 16) || m === 6 || m === 7 || (m === 8 && day <= 15)) return 'cgQ2'; // 16-Jun → 15-Sep
-  if ((m === 8 && day >= 16) || m === 9 || m === 10 || (m === 11 && day <= 15)) return 'cgQ3'; // 16-Sep → 15-Dec
-  if ((m === 11 && day >= 16) || m === 0 || m === 1 || (m === 2 && day <= 15)) return 'cgQ4'; // 16-Dec → 15-Mar
-  return 'cgQ4a'; // 16-Mar → 31-Mar
-}
-
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-function derivePurchaseLotID(data) {
-  const d = data.PurchaseDate ? new Date(data.PurchaseDate) : null;
-  if (!d || !data.SecurityName) return '';
-  const tag = data.LotTag || 0;
-  const day = d.getDate();
-  return `${data.SecurityName} - ${data.PurchasePricePerUnit} - ${day}-${MONTHS[d.getMonth()]}-${d.getFullYear()}${tag > 0 ? '-' + tag : ''}`;
-}
+// ---- Browser-only helpers (depend on getTable / global state) ----
 
 function nextLotTag(data) {
   const purchases = getTable('StockPurchasesOrTransferIns');
