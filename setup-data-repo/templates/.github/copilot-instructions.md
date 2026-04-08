@@ -39,7 +39,7 @@ When the user gives you documents to process:
 7. **If no ambiguity**: Confirm records were added, delegate to @thread-scribe to update THREAD.md
 8. **If there are questions**: Ask them in chat. Do NOT update DB until resolved. Delegate to @thread-scribe to log questions
 9. **On user response**: Delegate the clarification back to the subagent that raised the question — they have the domain knowledge to act on it. Then delegate to @thread-scribe to update THREAD.md. Never resolve a subagent's question yourself — you are a router, not a domain expert.
-10. **Knowledge capture**: Once all records are applied and open items resolved, delegate to @lore-keeper. It will review the chat history in batch chats/ and THREAD.md to identify any reusable entities, patterns, or processing decisions worth recording.
+10. **Knowledge capture**: Once all records are applied and open items resolved, delegate to @lore-keeper. It will review the chat history (chats/*) and THREAD.md to identify any reusable entities, patterns, or processing decisions worth recording.
 11. **Confirm/merge is a user action** — never auto-confirm. When the user confirms via the UI, the server merges the branch.
 
 If the user adds more documents in the same conversation, add them to the active batch.
