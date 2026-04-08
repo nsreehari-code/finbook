@@ -1,6 +1,6 @@
 ---
 description: "Use to verify cross-verification claims against DB records. Handles period reasoning (CY/FY/quarter), amount summing, and Status determination."
-tools: [read, edit]
+tools: [read, edit, runInTerminal]
 user-invocable: false
 ---
 
@@ -50,3 +50,15 @@ Always set `LastVerifiedAt` to today's date when updating Status.
 ## Re-verification
 
 When new records are added to DB (e.g., after a new batch is ingested), existing claims should be re-verified. The orchestrator may request re-verification for specific accounts or claim categories.
+
+## Using the Report Tool
+
+Instead of manually summing records, use the report tool for computed totals:
+
+```
+node .github/scripts/finbook-report.js DB/finbook.json --account <code> --report <type> [--fy <FY>] [--as-on <date>]
+```
+
+Report types: `income-summary`, `capital-gains`, `stock-transactions`, `holdings`, `stock-purchases`, `stock-sales`
+
+The tool outputs structured JSON with pre-computed totals (totalIncome, totalRelief, totalTDS, LTCG, STCG, holdings quantities, etc.). Use these totals directly for verification instead of reading and summing raw records yourself.

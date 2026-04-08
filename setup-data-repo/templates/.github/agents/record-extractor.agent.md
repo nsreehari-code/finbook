@@ -118,3 +118,22 @@ node .github/scripts/validate-finbook.js DB/finbook.json
 ```
 
 This checks required fields, date formats, number types, computed field leakage, and structural integrity. If validation fails, fix the issues before reporting back to the orchestrator. Do not leave invalid data in the DB.
+
+## Querying Computed Reports
+
+To verify totals or check computed data (income summary, capital gains, holdings, stock transactions), use the report tool:
+
+```
+node .github/scripts/finbook-report.js DB/finbook.json --account <code> --report <type> [--fy <FY>] [--as-on <date>]
+```
+
+Report types: `accounts`, `income-summary`, `capital-gains`, `stock-transactions`, `holdings`, `stock-purchases`, `stock-sales`
+
+Examples:
+```
+node .github/scripts/finbook-report.js DB/finbook.json --report accounts
+node .github/scripts/finbook-report.js DB/finbook.json --account Sarala --report holdings --as-on 2025-03-31
+node .github/scripts/finbook-report.js DB/finbook.json --account Sarala --report capital-gains --fy 2024-25
+```
+
+Use this to cross-check after ingestion — e.g., verify new records appear in the correct report and totals look reasonable.
