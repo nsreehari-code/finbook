@@ -181,6 +181,7 @@ filterByFY(getTable('CapitalGainsConsolidated'), selectedFY, 'CapitalGainsConsol
   incomeRows.push({ date: r.IncomeDate, category: 'Capital Gains', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '' });
 });
 filterByFY(getTable('StockSalesOrTransferOuts'), selectedFY, 'StockSalesOrTransferOuts').forEach(s => {
+  if (s.IsTransferOut) return;
   const lots = s.PurchaseLots || [];
   let acqCostINR = 0;
   lots.forEach(l => { const p = lotMap[l.PurchaseLotID]; if (p) acqCostINR += (l.SaleQuantity || 0) * (p.TotalPurchasePricePerUnit || 0) * (p.ExchangeRateToINR || 0); });
@@ -213,6 +214,7 @@ const totalTDS = Object.values(catSummary).reduce((s, v) => s + v.tds, 0);
 // Capital Gains detail
 const cgRows = [];
 filterByFY(getTable('StockSalesOrTransferOuts'), selectedFY, 'StockSalesOrTransferOuts').forEach(s => {
+  if (s.IsTransferOut) return;
   const lots = s.PurchaseLots || [];
   let acqCostINR = 0, earliestPurchaseDate = null;
   lots.forEach(l => {

@@ -180,7 +180,7 @@ function renderStockPurchases() {
     .sort((a, b) => (a.PurchaseDate || '').localeCompare(b.PurchaseDate || ''));
 
   renderWithFyGrouping('stockPurchasesTableContainer', data, fy, 'PurchaseDate', rows => {
-    const tbody = rows.map(r => `<tr>
+    const tbody = rows.map(r => `<tr class="${r.IsTransferIn ? 'row-transfer' : ''}">
       <td>${fmtDate(r.PurchaseDate)}</td>
       <td>${r.BrokerageName || ''}</td>
       <td>${r.SecurityName || ''}</td>
@@ -192,10 +192,11 @@ function renderStockPurchases() {
       <td class="num">${fmtR(r.TotalPurchaseValueINR)}</td>
       <td>${r.PurchaseLotID || ''}</td>
       <td>${r.IsSTTPaid ? 'Yes' : 'No'}</td>
+      <td>${r.IsTransferIn ? '↓ In' : ''}</td>
       <td>${actionBtns('stockPurchase', r.StockPurchaseID, r.IsLocked)}</td>
     </tr>`).join('');
     return `<table class="table table-sm table-hover align-middle">
-      <thead><tr><th>Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th><th class="text-end">Price/Unit (Cur)</th><th>Currency</th><th class="text-end">Total Value (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Value</th><th>Lot ID</th><th>STT</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th><th class="text-end">Price/Unit (Cur)</th><th>Currency</th><th class="text-end">Total Value (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Value</th><th>Lot ID</th><th>STT</th><th>Transfer</th><th>Actions</th></tr></thead>
       <tbody>${tbody}</tbody>
     </table>`;
   });
@@ -220,7 +221,7 @@ function renderStockSales() {
         `${l.SaleQuantity} × ${l.PurchaseLotID || 'Unknown'}`
       ).join('<br>');
       const cur = secCurrencyMap[`${r.BrokerageName}|${r.SecurityName}`] || '';
-      return `<tr>
+      return `<tr class="${r.IsTransferOut ? 'row-transfer' : ''}">
         <td>${fmtDate(r.SaleDate)}</td>
         <td>${r.BrokerageName || '—'}</td>
         <td>${r.SecurityName || '—'}</td>
@@ -230,11 +231,12 @@ function renderStockSales() {
         <td class="num">${fmt(r.ExchangeRateToINR)}</td>
         <td class="num">${fmtR(r.TotalSaleValueINR)}</td>
         <td>${lotInfo || '—'}</td>
+        <td>${r.IsTransferOut ? '↑ Out' : ''}</td>
         <td>${actionBtns('stockSale', r.StockSaleID, r.IsLocked)}</td>
       </tr>`;
     }).join('');
     return `<table class="table table-sm table-hover align-middle">
-      <thead><tr><th>Sale Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th><th class="text-end">Sale Amount (Cur)</th><th class="text-end">Expenses (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Total Value</th><th>Purchase Lots</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Sale Date</th><th>Brokerage</th><th>Security</th><th class="text-end">Qty</th><th class="text-end">Sale Amount (Cur)</th><th class="text-end">Expenses (Cur)</th><th class="text-end">Rate (INR)</th><th class="text-end">Total Value</th><th>Purchase Lots</th><th>Transfer</th><th>Actions</th></tr></thead>
       <tbody>${tbody}</tbody>
     </table>`;
   });
@@ -499,6 +501,7 @@ function renderAllIncome() {
     if (p.PurchaseLotID) lotMap[p.PurchaseLotID] = p;
   });
   filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
+    if (s.IsTransferOut) return;
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
     lots.forEach(l => {
@@ -874,7 +877,7 @@ function renderStockTransactions() {
     if (secVal && p.SecurityName !== secVal) return;
     rows.push({
       date: p.PurchaseDate,
-      type: 'Buy',
+      type: p.IsTransferIn ? 'Transfer In' : 'Buy',
       security: p.SecurityName || '',
       brokerage: p.BrokerageName || '',
       qty: p.PurchaseQuantity || 0,
@@ -895,7 +898,7 @@ function renderStockTransactions() {
     const pricePerUnit = totalLotQty > 0 ? (s.SaleAmount || 0) / totalLotQty : 0;
     rows.push({
       date: s.SaleDate,
-      type: 'Sell',
+      type: s.IsTransferOut ? 'Transfer Out' : 'Sell',
       security: s.SecurityName || '',
       brokerage: s.BrokerageName || '',
       qty: -(s.SaleQuantity || 0),
@@ -915,7 +918,7 @@ function renderStockTransactions() {
   rows.sort((a, b) => {
     const dc = (a.date || '').localeCompare(b.date || '');
     if (dc !== 0) return dc;
-    return a.type === 'Buy' ? -1 : 1;
+    return (a.type === 'Buy' || a.type === 'Transfer In') ? -1 : 1;
   });
 
   const container = document.getElementById('stTableContainer');
@@ -949,7 +952,8 @@ function buildStockTxnTable(rows) {
   const tbody = rows.map(r => {
     balances[r.security] = (balances[r.security] || 0) + r.qty;
     const bal = balances[r.security];
-    return `<tr class="${r.type === 'Sell' ? 'row-sell' : 'row-buy'}">
+    const rowClass = (r.type === 'Sell' || r.type === 'Transfer Out') ? 'row-sell' : 'row-buy';
+    return `<tr class="${rowClass}">
       <td>${fmtDate(r.date)}</td>
       <td>${r.type}</td>
       <td>${r.security}</td>
@@ -998,6 +1002,7 @@ function renderCapitalGainsView() {
 
   // Stock Sales → Capital Gains rows
   filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
+    if (s.IsTransferOut) return;
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;
     let earliestPurchaseDate = null;
@@ -1189,6 +1194,7 @@ function buildExportData() {
     incomeRows.push({ date: r.IncomeDate, category: 'Capital Gains', description: r.IncomeDescription || '', amount: r.IncomeAmount || 0, relief: 0, tds: r.TDSDeducted || 0, quarter: r.CgQ || '' });
   });
   filterByFY(getTable('StockSalesOrTransferOuts'), fy, 'StockSalesOrTransferOuts').forEach(s => {
+    if (s.IsTransferOut) return;
     if (fy && fy !== 'All' && dateToFY(s.SaleDate) !== fy) return;
     const lots = s.PurchaseLots || [];
     let acqCostINR = 0;

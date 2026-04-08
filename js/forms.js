@@ -99,7 +99,9 @@ const FORM_DEFS = {
       { name: 'TotalPurchaseValueINR', label: 'Value (₹)', type: 'number', step: '0.01', computed: true },
       { name: 'PurchaseLotID', label: 'Lot ID', type: 'text', computed: true },
       { name: 'LotTag', label: 'Lot Tag', type: 'number', step: '1', default: 0 },
-      { name: 'IsSTTPaid', label: 'STT Paid', type: 'checkbox', default: false }
+      { name: 'IsSTTPaid', label: 'STT Paid', type: 'checkbox', default: false },
+      { name: 'IsTransferIn', label: 'Transfer In', type: 'checkbox', default: false },
+      { name: 'Remarks', label: 'Remarks', type: 'text' }
     ]
   },
 
@@ -116,7 +118,9 @@ const FORM_DEFS = {
       { name: 'ExchangeRateToINR', label: 'Rate to INR', type: 'number', step: '0.01', required: true },
       { name: 'TotalSaleValue', label: 'Total Sale Value', type: 'number', step: '0.01', computed: true },
       { name: 'TotalSalePricePerUnit', label: 'Price/Unit', type: 'number', step: '0.01', computed: true },
-      { name: 'TotalSaleValueINR', label: 'Total Value (₹)', type: 'number', step: '0.01', computed: true }
+      { name: 'TotalSaleValueINR', label: 'Total Value (₹)', type: 'number', step: '0.01', computed: true },
+      { name: 'IsTransferOut', label: 'Transfer Out', type: 'checkbox', default: false },
+      { name: 'Remarks', label: 'Remarks', type: 'text' }
     ],
     hasSubform: true
   },

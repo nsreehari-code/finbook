@@ -47,6 +47,7 @@
   /* Row coloring */
   --fb-row-positive: #d5edd8;
   --fb-row-negative: #f8ddd8;
+  --fb-row-transfer: #dde5f3;
 
   /* Modal */
   --fb-modal-overlay: rgba(60, 46, 31, .5);
@@ -107,6 +108,7 @@
 
   --fb-row-positive: #1a3326;
   --fb-row-negative: #3d1f1f;
+  --fb-row-transfer: #1f2a3d;
 
   --fb-modal-overlay: rgba(0, 0, 0, .65);
   --fb-modal-bg: #242424;
@@ -383,6 +385,7 @@ th.sortable::after { content: ' ↕'; font-size: 0.6875rem; opacity: 0.3; }
 .row-buy { background: var(--fb-row-positive) !important; color: var(--fb-text) !important; }
 .row-sell { background: var(--fb-row-negative) !important; color: var(--fb-text) !important; }
 .row-sell td:nth-child(5) { color: #dc3545; font-weight: 600; }
+.row-transfer { background: var(--fb-row-transfer) !important; color: var(--fb-text) !important; }
 .positive { color: #198754; }
 .negative { color: #dc3545; }
 
