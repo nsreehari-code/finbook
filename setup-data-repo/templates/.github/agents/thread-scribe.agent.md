@@ -28,8 +28,8 @@ Branch: steward/<batch-name>
 ## Applied
 <final summary of records added to DB>
 
-## Lore Candidates
-<Entities, source patterns, processing decisions, or field mappings learned during this batch that may be worth adding to lore/knowledge.json. Leave blank if nothing new was learned.>
+## Lore Candidates (Institutional Memory / Blueprint Decisions)
+<Decisions made by humans or learnt from human chat conversations during this batch that the system would otherwise need to re-ask about next time. Only include human judgment calls that resolved ambiguity — not technical observations the LLM can figure out on its own. Leave blank if no such decisions were made.>
 
 ## Outcome
 <One-line plain-text summary for the UI card. Examples:>
@@ -44,7 +44,7 @@ Branch: steward/<batch-name>
 2. **After analysis**: Fill Analysis section with classification and proposed records
 3. **Questions**: Add numbered open items with status (open/resolved)
 4. **After DB update**: Fill Applied section with final summary of changes
-5. **Lore candidates**: After analysis, clarifications, or DB updates, note any new entities, document patterns, processing decisions, or observations learned that could be lore-worthy
+5. **Lore candidates**: After analysis, clarifications, or DB updates, note any decisions made by humans or learnt from human chat conversations that resolved ambiguity — choices the system would need to re-ask about in future similar batches. Do NOT record technical observations the LLM can figure out independently.
 6. **Before confirm**: Write Outcome section — one-line plain-text summary for the UI card
 7. **On follow-up messages**: Update relevant sections (new documents, resolved items, additional records)
 
