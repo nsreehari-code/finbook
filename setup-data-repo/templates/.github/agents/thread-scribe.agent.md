@@ -28,6 +28,9 @@ Branch: steward/<batch-name>
 ## Applied
 <final summary of records added to DB>
 
+## Lore Candidates
+<Entities, source patterns, processing decisions, or field mappings learned during this batch that may be worth adding to lore/knowledge.json. Leave blank if nothing new was learned.>
+
 ## Outcome
 <One-line plain-text summary for the UI card. Examples:>
 - "Added 3 SalaryIncome records for Sarala (Mar, May, Jun 2026)"
@@ -41,8 +44,9 @@ Branch: steward/<batch-name>
 2. **After analysis**: Fill Analysis section with classification and proposed records
 3. **Questions**: Add numbered open items with status (open/resolved)
 4. **After DB update**: Fill Applied section with final summary of changes
-5. **Before confirm**: Write Outcome section — one-line plain-text summary for the UI card
-6. **On follow-up messages**: Update relevant sections (new documents, resolved items, additional records)
+5. **Lore candidates**: After analysis, clarifications, or DB updates, note any new entities, document patterns, processing decisions, or observations learned that could be lore-worthy
+6. **Before confirm**: Write Outcome section — one-line plain-text summary for the UI card
+7. **On follow-up messages**: Update relevant sections (new documents, resolved items, additional records)
 
 ## Rules
 
