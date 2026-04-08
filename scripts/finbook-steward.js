@@ -146,11 +146,11 @@ Do NOT create the branch or directory. Do NOT copy the documents. They are alrea
 Steps:
 1. Read threads/${batchName}/THREAD.md if it exists
 2. Read each source document in threads/${batchName}/
-3. Read DB/finbook.json and kb/knowledge.json
+3. Read DB/finbook.json and lore/knowledge.json
 4. Classify, extract records, check dedup
 5. If no open items: update DB/finbook.json, create/update THREAD.md as applied
 6. If open items: write them to THREAD.md, do NOT update DB
-7. If any reusable knowledge is discovered, update kb/knowledge.json
+7. If any reusable knowledge is discovered, update lore/knowledge.json
 8. Commit all changes with descriptive messages
 
 Evidence-based only. Follow all rules in copilot-instructions.md.`;
@@ -176,7 +176,7 @@ Read the THREAD.md to see:
 Then:
 1. Map the user's response to open items
 2. Resolve what you can
-3. If any response contains reusable knowledge, update kb/knowledge.json
+3. If any response contains reusable knowledge, update lore/knowledge.json
 4. If all open items are resolved: update DB/finbook.json with the records and update THREAD.md — clear open items
 5. If open items remain: update THREAD.md with remaining items
 6. Commit all changes with descriptive messages

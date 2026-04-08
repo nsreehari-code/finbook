@@ -1,0 +1,47 @@
+{
+  "entities": [],
+  "decisions": [
+    {
+      "rule": "Schwab international statements use mm/dd/yyyy date format",
+      "category": "source-pattern",
+      "date": "2026-04-03",
+      "context": "Date format observed in Schwab international statement PDFs"
+    },
+    {
+      "rule": "For multi-trade contract notes, allocate total expenses proportionally by trade amount to each StockPurchase PurchaseExpenses",
+      "category": "processing-rule",
+      "date": "2026-04-03",
+      "context": "Expense allocation strategy when a single contract note contains multiple trades"
+    },
+    {
+      "rule": "Indian stocks (NSE/BSE) and Indian mutual funds go directly into CapitalGainsConsolidated with pre-computed sale value, acquisition cost, gain type (STCG/LTCG), and net gain. Do NOT create StockPurchasesOrTransferIns or StockSalesOrTransferOuts entries for these.",
+      "category": "processing-rule",
+      "date": "2026-04-06",
+      "context": "Indian brokerages (Zerodha, Groww, etc.) and MF statements provide ready-made P&L — no lot-level tracking needed"
+    },
+    {
+      "rule": "Foreign stocks (Schwab, MorganStanley, etc.) use the full lot lifecycle: record individual buys in StockPurchasesOrTransferIns with exchange rates and lot IDs, record sales in StockSalesOrTransferOuts linked to purchase lots. Capital gains are computed by the app from the sale-purchase linkage.",
+      "category": "processing-rule",
+      "date": "2026-04-06",
+      "context": "Foreign stocks require lot-level tracking for exchange rate conversions, holding period calculation, and DTAA/Form 67 compliance"
+    },
+    {
+      "rule": "Morgan Stanley Stock Plan quarterly statements use mm/dd/yy date format and show Share Deposits (RSU vests) with per-share price as cost basis",
+      "category": "source-pattern",
+      "date": "2026-04-06",
+      "context": "Morgan Stanley Stock Plan Services quarterly statements for employer stock plans use this format"
+    },
+    {
+      "rule": "IRS Form 1042-S is a cross-verification source by default — it provides annual aggregate totals (gross income, tax withheld) for a calendar year, not individual transaction records. Use it to create CrossVerification claims against existing or future per-transaction records from broker statements.",
+      "category": "processing-rule",
+      "date": "2026-04-07",
+      "context": "1042-S provides annual aggregates only; per-transaction details come from broker statements and should be recorded separately"
+    },
+    {
+      "rule": "Share transfers/withdrawals MUST be recorded in StockSalesOrTransferOuts with IsTransferOut: true and SaleAmount: 0. Transfer-ins should ONLY be recorded in StockPurchasesOrTransferIns when there is documentary evidence of shares arriving into a tracked account. A transfer-out does NOT imply a corresponding transfer-in — the shares may be gifted, moved to an account not tracked in this DB, or transferred to a different person. NEVER create automatic contra-entries.",
+      "category": "processing-rule",
+      "date": "2026-04-07",
+      "context": "Transfer-outs and transfer-ins are independent events — never assume one requires the other"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ This repository is the database and knowledge store for **Finbook**, an Indian p
 ## Structure
 
 - `DB/finbook.json` — The database (accounts, income, stocks, taxes)
-- `kb/knowledge.json` — Accumulated knowledge (entity mappings, decisions)
+- `lore/knowledge.json` — Institutional semantic memory (entity mappings, decisions, observations)
 - `threads/` — Document processing threads (one folder per batch)
 - `.github/copilot-instructions.md` — AI steward instructions
 - `.github/agents/` — Copilot subagents

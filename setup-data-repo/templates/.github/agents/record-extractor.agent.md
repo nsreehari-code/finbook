@@ -55,6 +55,8 @@ Records sales and transfer-outs (shares leaving to another brokerage). A record 
 - **Transfer-out**: Set `IsTransferOut: true`, `SaleAmount: 0`, `SaleExpenses: 0`. Link the PurchaseLots being moved. This is NOT a taxable event — no capital gains. **You MUST still create a record** so holdings are accurate.
 - **NEVER skip a share withdrawal/transfer** — always record it here with `IsTransferOut: true`.
 
+> **Transfer-out ≠ Transfer-in**: A transfer-out does NOT imply a corresponding transfer-in exists. Shares may be gifted, moved to an untracked account, or transferred to a different person. NEVER create automatic contra-entries in StockPurchasesOrTransferIns when you see a transfer-out. Only create a transfer-in when there is independent documentary evidence of shares arriving into a tracked account.
+
 ### AdvanceTax
 - Fields: PaymentDate (date), EffectiveDate (date, required), TaxAmountPaid (number, required), PaymentDescription (text), Remarks (text)
 - Computed (NEVER include): AdvanceTaxID, QFY, CgQ
@@ -102,7 +104,7 @@ Flag anything suspicious rather than silently ingesting.
 
 ### Evidence Gathering
 When in doubt, gather more evidence before deciding:
-1. Check `kb/knowledge.json` — has this question been answered before?
+1. Check `lore/knowledge.json` — has this question been answered before?
 2. Search existing records for the same entity (employer, brokerage, security) across all accounts
 3. Look at THREAD.md from prior batches in `threads/` for similar document types
 4. If still ambiguous — report back. Never guess.

@@ -17,7 +17,7 @@ Modes:
   (default)   Create a new finbook-data repository from templates
   --update    Update infrastructure files in an existing repo (agents,
               copilot-instructions, .gitignore, README) without touching
-              user data (DB/, kb/, threads/)
+              user data (DB/, lore/, threads/)
 
 Creates / updates:
   - .github/copilot-instructions.md   (AI steward orchestrator)
@@ -25,7 +25,7 @@ Creates / updates:
   - .gitignore
   - README.md
   - DB/finbook.json        (new repo only — empty database with config)
-  - kb/knowledge.json      (new repo only — empty knowledge base)
+  - lore/knowledge.json      (new repo only — institutional semantic memory)
   - threads/               (new repo only — batch processing directory)
 
 Example:
@@ -143,7 +143,7 @@ if (isUpdate) {
       console.log('Restored stashed changes.');
     }
 
-    console.log(`\nDone — updated ${count} infrastructure path(s). Data files (DB/, kb/) were not touched.`);
+    console.log(`\nDone — updated ${count} infrastructure path(s). Data files (DB/, lore/) were not touched.`);
   } catch (err) {
     console.error(`\nError during update: ${err.message}`);
     console.error('You may need to resolve conflicts manually.');

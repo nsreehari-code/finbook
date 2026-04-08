@@ -331,7 +331,7 @@ ${filesList || '(none)'}
 
 Chat history: threads/${batchId}/chat/ (read all .md files in numeric order)
 DB: DB/finbook.json
-KB: kb/knowledge.json
+Lore: lore/knowledge.json
 Instructions: .github/copilot-instructions.md
 
 Read everything, then produce both outputs.`;
